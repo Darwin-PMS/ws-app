@@ -1,0 +1,108 @@
+{
+  "expo": {
+    "name": "Nirbhaya - Women Safety",
+    "slug": "nirbhaya-women-safety",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0F0F14"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.nirbhaya.womensafety",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Nirbhaya uses Face ID for secure and quick login to protect your account.",
+        "NSMicrophoneUsageDescription": "This app needs access to your microphone for speech-to-text transcription.",
+        "NSCameraUsageDescription": "This app needs access to your camera for AR navigation and image analysis.",
+        "NSLocationWhenInUseUsageDescription": "This app needs access to your location for safety features and route guidance.",
+        "NSLocationAlwaysUsageDescription": "This app needs background location access for geofencing and safety monitoring.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs location access for safety features, route monitoring, and geofencing alerts."
+      },
+      "icon": "./assets/icon.png",
+      "alternateIcons": {
+        "Calculator": "./assets/icons/calculator-icon.png",
+        "Notes": "./assets/icons/notes-icon.png",
+        "Weather": "./assets/icons/weather-icon.png",
+        "Calendar": "./assets/icons/calendar-icon.png",
+        "Health": "./assets/icons/health-icon.png",
+        "Music": "./assets/icons/music-icon.png",
+        "Shopping": "./assets/icons/shopping-icon.png"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0F0F14"
+      },
+      "package": "com.nirbhaya.womensafety",
+      "icon": "./assets/icon.png",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ],
+      "alternateIcons": {
+        "Calculator": "./assets/icons/calculator-icon.png",
+        "Notes": "./assets/icons/notes-icon.png",
+        "Weather": "./assets/icons/weather-icon.png",
+        "Calendar": "./assets/icons/calendar-icon.png",
+        "Health": "./assets/icons/health-icon.png",
+        "Music": "./assets/icons/music-icon.png",
+        "Shopping": "./assets/icons/shopping-icon.png"
+      }
+    },
+    "plugins": [
+      "expo-image-picker",
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone for speech-to-text."
+        }
+      ],
+      "expo-font",
+      "expo-asset",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "This app needs location access for safety features, route monitoring, and geofencing alerts.",
+          "locationAlwaysPermission": "This app needs background location access for geofencing and safety monitoring.",
+          "locationWhenInUsePermission": "This app needs access to your location for safety features and route guidance."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera for AR navigation and escape guidance."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#10B981",
+          "sounds": [
+            "./assets/notification.wav"
+          ]
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow $(PRODUCT_NAME) to use Face ID for secure authentication."
+        }
+      ]
+    ]
+  }
+}

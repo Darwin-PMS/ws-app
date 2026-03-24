@@ -1,0 +1,57 @@
+# Dependencies
+node_modules/
+
+# React Native / Metro
+metro.config.js.local
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.staging
+
+# Android build outputs
+android/app/build/
+android/app/.cxx/
+android/build/
+android/.gradle/
+android/local.properties
+
+# iOS build outputs
+ios/build/
+ios/Pods/
+ios/Podfile.lock
+ios/*.xcuserstate
+ios/DerivedData/
+
+# Bundles
+*.jsbundle
+*.jsbundle.meta
+
+# Logs
+npm-debug.log
+yarn-error.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.iml
+
+# Debug files
+*.hprof
+
+
+# Expo
+.expo/web/cache/          # Ignore web build cache only
+.expo/settings.json       # Local settings (optional to ignore)
+.expo/devices.json        # Local device info (optional to ignore)
+
+/docs
+/package-lock.json
+.env
+convert-checklist.js
+convert-to-docx.js
