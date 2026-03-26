@@ -40,39 +40,31 @@ const WomenSafetyScreen = ({ navigation }) => {
     const [location, setLocation] = useState(null);
     const [isSending, setIsSending] = useState(false);
     const [emergencyContacts, setEmergencyContacts] = useState([]);
-    const [defaultContacts, setDefaultContacts] = useState([]);  // Default emergency numbers
+    const [defaultContacts, setDefaultContacts] = useState([]);
 
-    // SOS Active State - for live location tracking
     const [isSOSActive, setIsSOSActive] = useState(false);
     const [sosStartTime, setSosStartTime] = useState(null);
     const sosLocationIntervalRef = useRef(null);
     const sosLocationHistoryRef = useRef([]);
 
-    // Fake Call Caller Name - configurable for safety
     const [fakeCallCallerName, setFakeCallCallerName] = useState('Mom');
-
-    // Fake Call State
     const [isFakeCallActive, setIsFakeCallActive] = useState(false);
     const [fakeCallTimer, setFakeCallTimer] = useState(0);
     const fakeCallInterval = useRef(null);
 
-    // Siren State
     const [isSirenActive, setIsSirenActive] = useState(false);
     const sirenTimeoutRef = useRef(null);
 
-    // Add Contact Modal
     const [showAddContact, setShowAddContact] = useState(false);
     const [newContactName, setNewContactName] = useState('');
     const [newContactPhone, setNewContactPhone] = useState('');
-    const [newContactPriority, setNewContactPriority] = useState(1); // 1 = highest priority
+    const [newContactPriority, setNewContactPriority] = useState(1);
     const [isAddingContact, setIsAddingContact] = useState(false);
-    const [editingContact, setEditingContact] = useState(null); // For editing contacts
     const [showCallerNameModal, setShowCallerNameModal] = useState(false);
     const [tempCallerName, setTempCallerName] = useState('');
 
-    // Recording State
     const [isRecording, setIsRecording] = useState(false);
-    const [recordingType, setRecordingType] = useState('audio'); // 'audio' or 'video'
+    const [recordingType, setRecordingType] = useState('audio');
     const [recordingDuration, setRecordingDuration] = useState(0);
     const [hasRecordingPermission, setHasRecordingPermission] = useState(false);
     const [autoRecordOnSOS, setAutoRecordOnSOS] = useState(true);
@@ -80,7 +72,6 @@ const WomenSafetyScreen = ({ navigation }) => {
     const recordingInterval = useRef(null);
     const recordingRef = useRef(null);
 
-    // Battery & Signal Monitoring State
     const [batteryStatus, setBatteryStatus] = useState(null);
     const [signalStatus, setSignalStatus] = useState(null);
     const [signalWarning, setSignalWarning] = useState(null);
@@ -92,118 +83,67 @@ const WomenSafetyScreen = ({ navigation }) => {
         requestLocationPermission();
         loadFakeCallSettings();
         requestRecordingPermissions();
-
-        // Initialize battery and signal monitoring
         initializeDeviceMonitoring();
 
         return () => {
-            // Cleanup on unmount
-            if (fakeCallInterval.current) {
-                clearInterval(fakeCallInterval.current);
-            }
+            if (fakeCallInterval.current) clearInterval(fakeCallInterval.current);
             Speech.stop();
-            if (sirenTimeoutRef.current) {
-                clearTimeout(sirenTimeoutRef.current);
-            }
-            if (recordingInterval.current) {
-                clearInterval(recordingInterval.current);
-            }
+            if (sirenTimeoutRef.current) clearTimeout(sirenTimeoutRef.current);
+            if (recordingInterval.current) clearInterval(recordingInterval.current);
             stopRecording();
-            // Stop SOS live tracking on unmount
             stopSOSLiveTracking();
-            // Stop device monitoring
             stopDeviceMonitoring();
         };
     }, []);
 
-    // Initialize battery and signal monitoring
     const initializeDeviceMonitoring = async () => {
         try {
-            // Initialize battery service
             await batteryService.initialize();
             await batteryService.loadAlertState();
-
-            // Initialize signal service
             await signalService.initialize();
-
-            // Start periodic battery and signal checks
             startDeviceMonitoring();
-
-            console.log('Device monitoring initialized');
         } catch (error) {
             console.error('Error initializing device monitoring:', error);
         }
     };
 
-    // Start periodic device monitoring
     const startDeviceMonitoring = () => {
-        // Check battery every minute
         batteryCheckIntervalRef.current = setInterval(async () => {
             const status = await batteryService.getBatteryStatus();
             setBatteryStatus(status);
-
-            // Check and send battery alerts during SOS
             if (isSOSActive && emergencyContacts.length > 0) {
                 await batteryService.checkAndAlert(emergencyContacts, userName);
             }
+            if (isSOSActive) adjustTrackingForBattery(status);
+        }, 60000);
 
-            // Adjust tracking interval based on battery
-            if (isSOSActive) {
-                adjustTrackingForBattery(status);
-            }
-        }, 60000); // 1 minute
-
-        // Check signal every 30 seconds
         signalCheckIntervalRef.current = setInterval(async () => {
             const status = await signalService.getSignalStatus();
             setSignalStatus(status);
-
-            // Check for signal warnings
             const warning = await signalService.getWarningMessage();
             setSignalWarning(warning);
-
-            // Adjust tracking interval based on signal
-            if (isSOSActive) {
-                await adjustTrackingForSignal(status);
-            }
-        }, 30000); // 30 seconds
+            if (isSOSActive) adjustTrackingForSignal(status);
+        }, 30000);
     };
 
-    // Stop device monitoring
     const stopDeviceMonitoring = () => {
-        if (batteryCheckIntervalRef.current) {
-            clearInterval(batteryCheckIntervalRef.current);
-            batteryCheckIntervalRef.current = null;
-        }
-        if (signalCheckIntervalRef.current) {
-            clearInterval(signalCheckIntervalRef.current);
-            signalCheckIntervalRef.current = null;
-        }
+        if (batteryCheckIntervalRef.current) clearInterval(batteryCheckIntervalRef.current);
+        if (signalCheckIntervalRef.current) clearInterval(signalCheckIntervalRef.current);
         batteryService.stopMonitoring();
         signalService.stopMonitoring();
     };
 
-    // Adjust tracking interval based on battery level
     const adjustTrackingForBattery = async (batteryStatus) => {
         const optimalInterval = batteryService.getOptimalTrackingInterval();
         const shouldContinue = batteryService.shouldContinueTracking();
-
         if (!shouldContinue && sosLocationIntervalRef.current) {
-            // Battery too low, pause tracking
-            console.log('Battery too low, pausing tracking');
-            Alert.alert(
-                'Low Battery Warning',
-                'Your phone battery is critically low. Live tracking will be paused to preserve battery for emergency calls.'
-            );
+            Alert.alert('Low Battery', 'Live tracking paused to preserve battery for emergency calls.');
         }
     };
 
-    // Adjust tracking based on signal strength
     const adjustTrackingForSignal = async (signalStatus) => {
         const pauseCheck = await signalService.shouldPauseTracking();
-
         if (pauseCheck.shouldPause && sosLocationIntervalRef.current) {
-            console.log('Signal too weak, adjusting tracking interval');
             setSignalWarning(pauseCheck.reason);
         } else {
             setSignalWarning(null);
@@ -212,9 +152,7 @@ const WomenSafetyScreen = ({ navigation }) => {
 
     const requestLocationPermission = async () => {
         const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === 'granted') {
-            getCurrentLocation();
-        }
+        if (status === 'granted') getCurrentLocation();
     };
 
     const requestRecordingPermissions = async () => {
@@ -222,10 +160,7 @@ const WomenSafetyScreen = ({ navigation }) => {
             const cameraPermission = await Camera.requestCameraPermissionsAsync();
             const audioPermission = await Audio.requestPermissionsAsync();
             const mediaPermission = await MediaLibrary.requestPermissionsAsync();
-
-            if (cameraPermission.status === 'granted' &&
-                audioPermission.status === 'granted' &&
-                mediaPermission.status === 'granted') {
+            if (cameraPermission.status === 'granted' && audioPermission.status === 'granted' && mediaPermission.status === 'granted') {
                 setHasRecordingPermission(true);
             }
         } catch (error) {
@@ -236,9 +171,7 @@ const WomenSafetyScreen = ({ navigation }) => {
     const getCurrentLocation = async () => {
         try {
             const result = await locationService.getCurrentLocation();
-            if (result.success) {
-                setLocation(result.location);
-            }
+            if (result.success) setLocation(result.location);
         } catch (error) {
             console.error('Error getting location:', error);
         }
@@ -247,30 +180,19 @@ const WomenSafetyScreen = ({ navigation }) => {
     const loadEmergencyContacts = async () => {
         try {
             if (!userId) return;
-
-            // Load all emergency contacts (default + user-specific)
             const response = await databaseService.fetchAPI('/users/emergency-contacts/all');
-
             if (response.success && response.data) {
-                // Set user contacts
                 setEmergencyContacts(response.data.userContacts || []);
-                // Set default contacts
                 setDefaultContacts(response.data.defaultContacts || []);
             } else {
-                // Fallback to legacy API
                 const response = await databaseService.getEmergencyContacts(userId);
-                if (response.success) {
-                    setEmergencyContacts(response.contacts || []);
-                }
+                if (response.success) setEmergencyContacts(response.contacts || []);
             }
         } catch (error) {
             console.error('Error loading contacts:', error);
-            // Try fallback to legacy API
             try {
                 const response = await databaseService.getEmergencyContacts(userId);
-                if (response.success) {
-                    setEmergencyContacts(response.contacts || []);
-                }
+                if (response.success) setEmergencyContacts(response.contacts || []);
             } catch (fallbackError) {
                 console.error('Fallback also failed:', fallbackError);
             }
@@ -279,15 +201,10 @@ const WomenSafetyScreen = ({ navigation }) => {
 
     const loadFakeCallSettings = async () => {
         try {
-            // Load user's custom fake call caller name from storage or settings
-            if (AsyncStorage && typeof AsyncStorage.getItem === 'function') {
-                const settings = await AsyncStorage.getItem('fakeCallSettings');
-                if (settings) {
-                    const parsed = JSON.parse(settings);
-                    if (parsed.callerName) {
-                        setFakeCallCallerName(parsed.callerName);
-                    }
-                }
+            const settings = await AsyncStorage.getItem('fakeCallSettings');
+            if (settings) {
+                const parsed = JSON.parse(settings);
+                if (parsed.callerName) setFakeCallCallerName(parsed.callerName);
             }
         } catch (error) {
             console.error('Error loading fake call settings:', error);
@@ -296,21 +213,14 @@ const WomenSafetyScreen = ({ navigation }) => {
 
     const saveFakeCallSettings = async (callerName) => {
         try {
-            if (AsyncStorage && typeof AsyncStorage.setItem === 'function') {
-                const settings = await AsyncStorage.getItem('fakeCallSettings');
-                const parsed = settings ? JSON.parse(settings) : {};
-                parsed.callerName = callerName;
-                await AsyncStorage.setItem('fakeCallSettings', JSON.stringify(parsed));
-                setFakeCallCallerName(callerName);
-            }
+            const settings = await AsyncStorage.getItem('fakeCallSettings');
+            const parsed = settings ? JSON.parse(settings) : {};
+            parsed.callerName = callerName;
+            await AsyncStorage.setItem('fakeCallSettings', JSON.stringify(parsed));
+            setFakeCallCallerName(callerName);
         } catch (error) {
             console.error('Error saving fake call settings:', error);
         }
-    };
-
-    const handleEditCallerName = () => {
-        setTempCallerName(fakeCallCallerName);
-        setShowCallerNameModal(true);
     };
 
     const handleSaveCallerName = async () => {
@@ -326,14 +236,11 @@ const WomenSafetyScreen = ({ navigation }) => {
             Alert.alert('Error', 'Please enter name and phone number');
             return;
         }
-
-        // Validate phone number
         const phoneRegex = /^[+]?[\d\s-]{10,}$/;
         if (!phoneRegex.test(newContactPhone.replace(/\s/g, ''))) {
             Alert.alert('Error', 'Please enter a valid phone number');
             return;
         }
-
         setIsAddingContact(true);
         try {
             const response = await databaseService.addEmergencyContact(userId, {
@@ -341,7 +248,6 @@ const WomenSafetyScreen = ({ navigation }) => {
                 phone: newContactPhone.trim(),
                 priority: newContactPriority,
             });
-
             if (response.success) {
                 Alert.alert('Success', 'Emergency contact added successfully');
                 setShowAddContact(false);
@@ -359,157 +265,91 @@ const WomenSafetyScreen = ({ navigation }) => {
         }
     };
 
-    // Update contact priority
     const updateContactPriority = async (contact, newPriority) => {
         try {
-            const response = await databaseService.updateEmergencyContact(userId, contact.id, {
-                priority: newPriority,
-            });
-            if (response.success) {
-                loadEmergencyContacts();
-            }
+            const response = await databaseService.updateEmergencyContact(userId, contact.id, { priority: newPriority });
+            if (response.success) loadEmergencyContacts();
         } catch (error) {
             console.error('Error updating contact priority:', error);
         }
     };
 
-    // Reorder contacts (move up/down)
     const reorderContacts = async (contact, direction) => {
         const currentContacts = [...emergencyContacts].sort((a, b) => a.priority - b.priority);
         const currentIndex = currentContacts.findIndex(c => c.id === contact.id);
-
         if (direction === 'up' && currentIndex > 0) {
-            const newPriority = currentContacts[currentIndex - 1].priority;
-            await updateContactPriority(contact, newPriority);
+            await updateContactPriority(contact, currentContacts[currentIndex - 1].priority);
         } else if (direction === 'down' && currentIndex < currentContacts.length - 1) {
-            const newPriority = currentContacts[currentIndex + 1].priority;
-            await updateContactPriority(contact, newPriority);
+            await updateContactPriority(contact, currentContacts[currentIndex + 1].priority);
         }
     };
 
     const deleteEmergencyContact = (contact) => {
-        // Check minimum contacts requirement
         if (emergencyContacts.length <= 5) {
-            Alert.alert(
-                'Cannot Delete Contact',
-                `You need at least 5 emergency contacts for safety. You currently have ${emergencyContacts.length} contact(s). Please add more contacts before deleting.`,
-                [{ text: 'OK' }]
-            );
+            Alert.alert('Cannot Delete', `You need at least 5 emergency contacts. You have ${emergencyContacts.length}. Please add more before deleting.`);
             return;
         }
-
-        Alert.alert(
-            'Delete Contact',
-            `Are you sure you want to delete ${contact.name}?`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            const response = await databaseService.deleteEmergencyContact(userId, contact.id);
-                            if (response.success) {
-                                loadEmergencyContacts();
-                            }
-                        } catch (error) {
-                            console.error('Error deleting contact:', error);
-                        }
-                    },
+        Alert.alert('Delete Contact', `Are you sure you want to delete ${contact.name}?`, [
+            { text: 'Cancel', style: 'cancel' },
+            {
+                text: 'Delete',
+                style: 'destructive',
+                onPress: async () => {
+                    try {
+                        const response = await databaseService.deleteEmergencyContact(userId, contact.id);
+                        if (response.success) loadEmergencyContacts();
+                    } catch (error) {
+                        console.error('Error deleting contact:', error);
+                    }
                 },
-            ]
-        );
+            },
+        ]);
     };
 
     const callContact = (phoneNumber) => {
         const phoneUrl = Platform.OS === 'android' ? `tel:${phoneNumber}` : `telprompt:${phoneNumber}`;
         Linking.canOpenURL(phoneUrl).then((supported) => {
-            if (supported) {
-                Linking.openURL(phoneUrl);
-            } else {
-                Alert.alert('Error', 'Phone calls not supported on this device');
-            }
-        }).catch((error) => {
-            console.error('Error opening phone URL:', error);
-            Alert.alert('Error', 'Unable to make phone call');
-        });
+            if (supported) Linking.openURL(phoneUrl);
+            else Alert.alert('Error', 'Phone calls not supported on this device');
+        }).catch(() => Alert.alert('Error', 'Unable to make phone call'));
     };
 
     const sendEmergencyAlert = async (immediate = false) => {
         if (isSending) return;
-
         Vibration.vibrate([0, 500, 200, 500]);
-
-        // If not immediate mode, show confirmation dialog
         if (!immediate) {
-            Alert.alert(
-                'EMERGENCY ALERT',
-                'This will send your location to emergency contacts and start audio recording for evidence. Continue?',
-                [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                        text: 'SEND HELP',
-                        style: 'destructive',
-                        onPress: () => triggerSOSAlert(),
-                    },
-                ]
-            );
+            Alert.alert('EMERGENCY ALERT', 'This will send your location to emergency contacts and start audio recording. Continue?', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'SEND HELP', style: 'destructive', onPress: () => triggerSOSAlert() },
+            ]);
         } else {
-            // Immediate one-tap SOS activation
             triggerSOSAlert();
         }
     };
 
-    // Internal function to trigger the actual SOS alert
     const triggerSOSAlert = async () => {
         setIsSending(true);
         try {
-            // Auto-start recording for evidence collection
             if (autoRecordOnSOS && !isRecording && hasRecordingPermission) {
-                try {
-                    await startRecording('audio');
-                } catch (recError) {
-                    console.error('Auto-recording failed:', recError);
-                }
+                try { await startRecording('audio'); } catch (recError) { console.error('Auto-recording failed:', recError); }
             }
-
-            // Use offline service for SOS - handles both online and offline scenarios
-            // This will send SMS even when offline using last known location
-            const sosResponse = await offlineService.triggerSOSOffline(
-                userId,
-                userName,
-                emergencyContacts
-            );
-
-            // Get location for live tracking
+            const sosResponse = await offlineService.triggerSOSOffline(userId, userName, emergencyContacts);
             const locationResult = await locationService.getCurrentLocation();
-
-            // Start live location tracking if location available
-            if (locationResult.success) {
-                startSOSLiveTracking(locationResult);
-            }
-
-            // Show appropriate message based on result
+            if (locationResult.success) startSOSLiveTracking(locationResult);
             if (sosResponse.success) {
-                if (sosResponse.queued) {
-                    Alert.alert('Alert Queued', 'Emergency alert has been saved and will be sent when online. SMS has been sent to your emergency contacts with your location.');
-                } else {
-                    Alert.alert('Alert Sent', 'Emergency contacts have been notified. Recording is in progress for evidence. Your live location is being tracked.');
-                }
+                if (sosResponse.queued) Alert.alert('Alert Queued', 'Emergency alert saved. SMS sent with your location.');
+                else Alert.alert('Alert Sent', 'Emergency contacts notified. Recording in progress.');
             }
         } catch (error) {
             console.error('Error sending alert:', error);
-            // Fallback: try to send SMS directly even if offline service fails
             try {
                 const isAvailable = await SMS.isAvailableAsync();
                 if (isAvailable && emergencyContacts.length > 0) {
                     const phoneNumbers = emergencyContacts.map(c => c.phone);
                     const lastLocation = offlineService.getLastKnownLocation();
                     let message = `EMERGENCY! ${userName} needs help!`;
-                    if (lastLocation) {
-                        message += `\n\nLast Known Location: https://maps.google.com/?q=${lastLocation.latitude},${lastLocation.longitude}`;
-                    }
-                    message += `\n\nTime: ${new Date().toLocaleString()}`;
+                    if (lastLocation) message += `\nLocation: https://maps.google.com/?q=${lastLocation.latitude},${lastLocation.longitude}`;
+                    message += `\nTime: ${new Date().toLocaleString()}`;
                     await SMS.sendSMSAsync(phoneNumbers, message);
                     Alert.alert('SMS Sent', 'Emergency SMS sent to your contacts.');
                 } else {
@@ -524,454 +364,166 @@ const WomenSafetyScreen = ({ navigation }) => {
         }
     };
 
-    // ==================== LIVE LOCATION TRACKING FOR SOS ====================
     const startSOSLiveTracking = (initialLocation) => {
         setIsSOSActive(true);
         setSosStartTime(Date.now());
         sosLocationHistoryRef.current = [];
-
-        // Track location every 30 seconds and send to contacts
         sosLocationIntervalRef.current = setInterval(async () => {
             try {
                 const locationResult = await locationService.getCurrentLocation();
-
                 if (locationResult.success) {
-                    // Store location in history
                     sosLocationHistoryRef.current.push({
                         latitude: locationResult.location.latitude,
                         longitude: locationResult.location.longitude,
                         timestamp: new Date().toISOString(),
                         accuracy: locationResult.location.accuracy,
                     });
-
-                    // Send live location update to emergency contacts
                     await sendLiveLocationUpdate(locationResult.location);
-
-                    // Also update via SOS service
-                    await sosService.updateSOSLocation({
-                        userId,
-                        location: {
-                            latitude: locationResult.location.latitude,
-                            longitude: locationResult.location.longitude,
-                        },
-                        timestamp: new Date().toISOString(),
-                    });
+                    await sosService.updateSOSLocation({ userId, location: { latitude: locationResult.location.latitude, longitude: locationResult.location.longitude }, timestamp: new Date().toISOString() });
                 }
             } catch (error) {
                 console.error('Error in live location tracking:', error);
             }
-        }, 30000); // Update every 30 seconds
-
-        // Also start continuous watching for more accurate tracking
-        locationService.startWatchingLocation(async (loc) => {
-            // This is additional high-frequency tracking
-            console.log('SOS Live location update:', loc.latitude, loc.longitude);
-        }, {
-            accuracy: Location.Accuracy.High,
-            timeInterval: 10000, // 10 seconds
-            distanceInterval: 5, // 5 meters
-        });
+        }, 30000);
+        locationService.startWatchingLocation((loc) => { console.log('SOS Live location:', loc.latitude, loc.longitude); }, { accuracy: Location.Accuracy.High, timeInterval: 10000, distanceInterval: 5 });
     };
 
     const sendLiveLocationUpdate = async (locationData) => {
         if (emergencyContacts.length === 0) return;
-
         try {
             const mapsUrl = `https://maps.google.com/?q=${locationData.latitude},${locationData.longitude}`;
-            const message = `🚨 LIVE LOCATION UPDATE - ${userName}\n\nCurrent Location: ${mapsUrl}\n\nAccuracy: ${locationData.accuracy ? Math.round(locationData.accuracy) + 'm' : 'Unknown'}\n\nTime: ${new Date().toLocaleString()}\n\nThis is a live location update during an active emergency alert.`;
-
+            const message = `LIVE LOCATION - ${userName}\nCurrent: ${mapsUrl}\nAccuracy: ${locationData.accuracy ? Math.round(locationData.accuracy) + 'm' : 'Unknown'}\nTime: ${new Date().toLocaleString()}`;
             const phoneNumbers = emergencyContacts.map(c => c.phone);
-            const { result } = await SMS.sendSMSAsync(phoneNumbers, message);
-            console.log('Live location update sent:', result);
+            await SMS.sendSMSAsync(phoneNumbers, message);
         } catch (error) {
             console.error('Error sending live location update:', error);
         }
     };
 
     const stopSOSLiveTracking = () => {
-        if (sosLocationIntervalRef.current) {
-            clearInterval(sosLocationIntervalRef.current);
-            sosLocationIntervalRef.current = null;
-        }
-
-        // Stop watching location
+        if (sosLocationIntervalRef.current) { clearInterval(sosLocationIntervalRef.current); sosLocationIntervalRef.current = null; }
         locationService.stopWatchingLocation();
-
         setIsSOSActive(false);
         setSosStartTime(null);
         sosLocationHistoryRef.current = [];
     };
 
     const cancelSOS = () => {
-        Alert.alert(
-            'Cancel SOS',
-            'Are you sure you want to cancel the emergency alert and stop live tracking?',
-            [
-                { text: 'No, Continue SOS', style: 'cancel' },
-                {
-                    text: 'Yes, Cancel SOS',
-                    style: 'destructive',
-                    onPress: async () => {
-                        stopSOSLiveTracking();
-
-                        // Stop recording if active
-                        if (isRecording) {
-                            await stopRecording();
-                        }
-
-                        // Notify contacts that SOS is cancelled
-                        if (emergencyContacts.length > 0) {
-                            const message = `✅ ${userName} has cancelled the emergency alert. You are now safe.`;
-                            const phoneNumbers = emergencyContacts.map(c => c.phone);
-                            try {
-                                await SMS.sendSMSAsync(phoneNumbers, message);
-                            } catch (error) {
-                                console.error('Error sending cancellation SMS:', error);
-                            }
-                        }
-
-                        Alert.alert('SOS Cancelled', 'Emergency alert has been cancelled and contacts have been notified.');
-                    },
+        Alert.alert('Cancel SOS', 'Stop emergency alert and live tracking?', [
+            { text: 'No, Continue SOS', style: 'cancel' },
+            {
+                text: 'Yes, Cancel',
+                style: 'destructive',
+                onPress: async () => {
+                    stopSOSLiveTracking();
+                    if (isRecording) await stopRecording();
+                    if (emergencyContacts.length > 0) {
+                        const message = `${userName} has cancelled the emergency alert. You are now safe.`;
+                        const phoneNumbers = emergencyContacts.map(c => c.phone);
+                        try { await SMS.sendSMSAsync(phoneNumbers, message); } catch (error) { console.error('Error:', error); }
+                    }
+                    Alert.alert('SOS Cancelled', 'Emergency alert has been cancelled.');
                 },
-            ]
-        );
+            },
+        ]);
     };
 
-    // ==================== FAKE CALL FEATURE ====================
     const startFakeCall = async () => {
         try {
-            // Use Speech synthesis for the fake call
             setIsFakeCallActive(true);
-
-            // Speak the caller name
-            Speech.speak(`Incoming call from ${fakeCallCallerName}`, {
-                pitch: 1.0,
-                rate: 1.0,
-                onStart: () => {
-                    console.log('Fake call started');
-                },
-                onDone: () => {
-                    console.log('Fake call speech done');
-                },
-                onError: (error) => {
-                    console.error('Speech error:', error);
-                },
-            });
-
-            // Set timer (default 5 minutes)
-            let timer = 300; // 5 minutes in seconds
+            Speech.speak(`Incoming call from ${fakeCallCallerName}`, { pitch: 1.0, rate: 1.0 });
+            let timer = 300;
             setFakeCallTimer(timer);
-
             fakeCallInterval.current = setInterval(() => {
                 timer -= 1;
                 setFakeCallTimer(timer);
-
-                if (timer <= 0) {
-                    stopFakeCall();
-                }
+                if (timer <= 0) stopFakeCall();
             }, 1000);
-
-            Alert.alert(
-                'Fake Call Started',
-                `Incoming call from "${fakeCallCallerName}". Tap to answer or wait for it to end.`,
-                [
-                    {
-                        text: 'Answer Now',
-                        onPress: () => {
-                            Speech.speak('Hello, are you coming home soon?', {
-                                pitch: 1.0,
-                                rate: 1.0,
-                            });
-                            Alert.alert('Call Active', 'Tap "End Call" to stop the fake call');
-                        },
-                    },
-                ]
-            );
+            Alert.alert('Fake Call', `Incoming call from "${fakeCallCallerName}"`, [
+                { text: 'Answer Now', onPress: () => { Speech.speak('Hello, are you coming home soon?', { pitch: 1.0, rate: 1.0 }); Alert.alert('Call Active', 'Tap "End Call" to stop'); } },
+            ]);
         } catch (error) {
             console.error('Error starting fake call:', error);
-            Alert.alert('Error', 'Failed to start fake call. Please check audio permissions.');
+            Alert.alert('Error', 'Failed to start fake call. Check audio permissions.');
         }
     };
 
     const stopFakeCall = async () => {
-        try {
-            if (fakeCallInterval.current) {
-                clearInterval(fakeCallInterval.current);
-                fakeCallInterval.current = null;
-            }
-
-            // Stop speech
-            Speech.stop();
-
-            setIsFakeCallActive(false);
-            setFakeCallTimer(0);
-        } catch (error) {
-            console.error('Error stopping fake call:', error);
-        }
+        if (fakeCallInterval.current) { clearInterval(fakeCallInterval.current); fakeCallInterval.current = null; }
+        Speech.stop();
+        setIsFakeCallActive(false);
+        setFakeCallTimer(0);
     };
 
-    const formatTime = (seconds) => {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    };
+    const formatTime = (seconds) => `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
 
-    // ==================== SIREN FEATURE ====================
     const toggleSiren = () => {
         if (isSirenActive) {
-            // Stop siren
-            try {
-                Speech.stop();
-                if (sirenTimeoutRef.current) {
-                    clearTimeout(sirenTimeoutRef.current);
-                    sirenTimeoutRef.current = null;
-                }
-                setIsSirenActive(false);
-            } catch (error) {
-                console.error('Error stopping siren:', error);
-            }
+            Speech.stop();
+            if (sirenTimeoutRef.current) { clearTimeout(sirenTimeoutRef.current); sirenTimeoutRef.current = null; }
+            setIsSirenActive(false);
         } else {
-            // Start siren using speech synthesis with alternating pitch
             setIsSirenActive(true);
-
             let isHigh = true;
-
             const speakSiren = () => {
                 if (!isSirenActive) return;
-
-                const pitch = isHigh ? 2.0 : 0.5;
-                Speech.speak('Siren', {
-                    pitch: pitch,
-                    rate: 0.8,
-                    onDone: () => {
-                        if (isSirenActive) {
-                            speakSiren();
-                        }
-                    },
-                });
+                Speech.speak('Siren', { pitch: isHigh ? 2.0 : 0.5, rate: 0.8, onDone: () => { if (isSirenActive) speakSiren(); } });
                 isHigh = !isHigh;
             };
-
             speakSiren();
-
-            // Auto-stop after 30 seconds as safety measure
-            sirenTimeoutRef.current = setTimeout(() => {
-                if (isSirenActive) {
-                    toggleSiren();
-                }
-            }, 30000);
+            sirenTimeoutRef.current = setTimeout(() => { if (isSirenActive) toggleSiren(); }, 30000);
         }
     };
 
-    // ==================== SHARE LOCATION FEATURE ====================
     const shareLocation = async () => {
-        try {
-            await getCurrentLocation();
-
-            if (!location) {
-                Alert.alert('Error', 'Unable to get your location. Please enable location services.');
-                return;
-            }
-
-            const mapsUrl = `https://maps.google.com/?q=${location.latitude},${location.longitude}`;
-            const message = `My current location:\n${mapsUrl}\n\nShared from Women Safety App`;
-
-            const isAvailable = await SMS.isAvailableAsync();
-
-            if (isAvailable && emergencyContacts.length > 0) {
-                Alert.alert(
-                    'Share Location',
-                    'Choose how to share your location',
-                    [
-                        {
-                            text: 'Share via App',
-                            onPress: async () => {
-                                try {
-                                    await Share.share({
-                                        message: message,
-                                        title: 'My Location',
-                                    });
-                                } catch (error) {
-                                    console.error('Error sharing:', error);
-                                }
-                            },
-                        },
-                        {
-                            text: 'Send to Emergency Contacts',
-                            onPress: async () => {
-                                const phoneNumbers = emergencyContacts.map(c => c.phone);
-                                const { result } = await SMS.sendSMSAsync(phoneNumbers, message);
-                                Alert.alert('Shared', 'Location shared with emergency contacts');
-                            },
-                        },
-                        {
-                            text: 'Copy to Clipboard',
-                            onPress: async () => {
-                                await Clipboard.setStringAsync(mapsUrl);
-                                Alert.alert('Copied', 'Location link copied to clipboard');
-                            },
-                        },
-                        {
-                            text: 'Cancel',
-                            style: 'cancel',
-                        },
-                    ]
-                );
-            } else {
-                Alert.alert(
-                    'Share Location',
-                    'Choose how to share your location',
-                    [
-                        {
-                            text: 'Share via App',
-                            onPress: async () => {
-                                try {
-                                    await Share.share({
-                                        message: message,
-                                        title: 'My Location',
-                                    });
-                                } catch (error) {
-                                    console.error('Error sharing:', error);
-                                }
-                            },
-                        },
-                        {
-                            text: 'Copy to Clipboard',
-                            onPress: async () => {
-                                await Clipboard.setStringAsync(mapsUrl);
-                                Alert.alert('Copied', 'Location link copied to clipboard');
-                            },
-                        },
-                        {
-                            text: 'Cancel',
-                            style: 'cancel',
-                        },
-                    ]
-                );
-            }
-        } catch (error) {
-            console.error('Error sharing location:', error);
-            Alert.alert('Error', 'Failed to share location');
-        }
+        await getCurrentLocation();
+        if (!location) { Alert.alert('Error', 'Unable to get location. Enable location services.'); return; }
+        const mapsUrl = `https://maps.google.com/?q=${location.latitude},${location.longitude}`;
+        const message = `My location:\n${mapsUrl}\n\nFrom Women Safety App`;
+        const isAvailable = await SMS.isAvailableAsync();
+        Alert.alert('Share Location', 'Choose how to share', [
+            { text: 'Share via App', onPress: async () => { try { await Share.share({ message, title: 'My Location' }); } catch (e) { console.error(e); } } },
+            ...(emergencyContacts.length > 0 ? [{ text: 'Send to Contacts', onPress: async () => { const phoneNumbers = emergencyContacts.map(c => c.phone); await SMS.sendSMSAsync(phoneNumbers, message); Alert.alert('Sent', 'Location shared with contacts'); } }] : []),
+            { text: 'Copy Link', onPress: async () => { await Clipboard.setStringAsync(mapsUrl); Alert.alert('Copied', 'Location link copied'); } },
+            { text: 'Cancel', style: 'cancel' },
+        ]);
     };
 
-    // ==================== RECORDING FEATURE ====================
     const startRecording = async (type = 'audio') => {
-        if (!hasRecordingPermission) {
-            Alert.alert('Permission Required', 'Please grant camera and microphone permissions to use recording.');
-            return;
-        }
-
+        if (!hasRecordingPermission) { Alert.alert('Permission Required', 'Grant camera & microphone permissions.'); return; }
         try {
             setRecordingType(type);
             setRecordingDuration(0);
             setIsRecording(true);
-
-            // Start duration timer
-            recordingInterval.current = setInterval(() => {
-                setRecordingDuration(prev => prev + 1);
-            }, 1000);
-
-            if (type === 'audio') {
-                // Audio recording using expo-av
-                await Audio.setAudioModeAsync({
-                    allowsRecordingIOS: true,
-                    playsInSilentModeIOS: true,
-                });
-
-                const { recording } = await Audio.Recording.createAsync(
-                    Audio.RecordingOptionsPresets.HIGH_QUALITY
-                );
-                recordingRef.current = recording;
-            } else {
-                // Video recording - this would require Camera component
-                // For now, we'll use audio recording as fallback
-                Alert.alert('Video Recording', 'Video recording requires camera. Using audio recording instead.');
-
-                await Audio.setAudioModeAsync({
-                    allowsRecordingIOS: true,
-                    playsInSilentModeIOS: true,
-                });
-
-                const { recording } = await Audio.Recording.createAsync(
-                    Audio.RecordingOptionsPresets.HIGH_QUALITY
-                );
-                recordingRef.current = recording;
-            }
-
-            Alert.alert(
-                'Recording Started',
-                `${type === 'audio' ? 'Audio' : 'Video'} recording for evidence collection has started.`,
-                [{ text: 'OK' }]
-            );
+            recordingInterval.current = setInterval(() => setRecordingDuration(prev => prev + 1), 1000);
+            await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
+            const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+            recordingRef.current = recording;
+            Alert.alert('Recording Started', `${type === 'audio' ? 'Audio' : 'Video'} recording started for evidence.`);
         } catch (error) {
             console.error('Error starting recording:', error);
             setIsRecording(false);
-            Alert.alert('Error', 'Failed to start recording. Please check permissions.');
+            Alert.alert('Error', 'Failed to start recording.');
         }
     };
 
     const stopRecording = async () => {
         try {
-            if (recordingInterval.current) {
-                clearInterval(recordingInterval.current);
-                recordingInterval.current = null;
-            }
-
+            if (recordingInterval.current) { clearInterval(recordingInterval.current); recordingInterval.current = null; }
             if (recordingRef.current) {
                 await recordingRef.current.stopAndUnloadAsync();
                 const uri = recordingRef.current.getURI();
                 recordingRef.current = null;
-
                 if (uri) {
-                    // Save to local storage
+                    try { await MediaLibrary.createAssetAsync(uri); } catch (e) { console.error(e); }
                     try {
-                        const asset = await MediaLibrary.createAssetAsync(uri);
-                        console.log('Recording saved to media library:', asset.uri);
-                    } catch (mediaError) {
-                        console.error('Error saving to media library:', mediaError);
-                    }
-
-                    // Save locally and try to upload to cloud
-                    try {
-                        await recordingService.saveRecordingLocally(uri, {
-                            userId,
-                            type: recordingType,
-                            duration: recordingDuration,
-                            timestamp: new Date().toISOString(),
-                            sosActive: isSOSActive,
-                        });
-
-                        // Try to upload to cloud
-                        const uploadResult = await recordingService.uploadRecording(uri, {
-                            userId,
-                            type: recordingType,
-                            duration: recordingDuration,
-                            timestamp: new Date().toISOString(),
-                        });
-
-                        if (uploadResult.success) {
-                            Alert.alert(
-                                'Recording Saved',
-                                'Recording saved locally and uploaded to cloud for evidence collection.'
-                            );
-                        } else if (uploadResult.queued) {
-                            Alert.alert(
-                                'Recording Saved',
-                                'Recording saved locally. Will be uploaded to cloud when internet is available.'
-                            );
-                        }
-                    } catch (saveError) {
-                        console.error('Error saving recording:', saveError);
-                        Alert.alert('Recording Complete', 'Recording saved locally.');
-                    }
+                        await recordingService.saveRecordingLocally(uri, { userId, type: recordingType, duration: recordingDuration, timestamp: new Date().toISOString(), sosActive: isSOSActive });
+                        const uploadResult = await recordingService.uploadRecording(uri, { userId, type: recordingType, duration: recordingDuration, timestamp: new Date().toISOString() });
+                        Alert.alert('Recording Saved', uploadResult.success ? 'Saved and uploaded.' : 'Saved locally. Will upload when online.');
+                    } catch (e) { console.error(e); Alert.alert('Recording Complete', 'Saved locally.'); }
                 }
             }
-
-            await Audio.setAudioModeAsync({
-                allowsRecordingIOS: false,
-            });
-
+            await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
             setIsRecording(false);
             setRecordingDuration(0);
         } catch (error) {
@@ -981,470 +533,250 @@ const WomenSafetyScreen = ({ navigation }) => {
     };
 
     const toggleRecording = () => {
-        if (isRecording) {
-            stopRecording();
-        } else {
-            Alert.alert(
-                'Start Recording',
-                'Choose recording type for evidence collection',
-                [
-                    {
-                        text: 'Audio Only',
-                        onPress: () => startRecording('audio'),
-                    },
-                    {
-                        text: 'Video (with Audio)',
-                        onPress: () => startRecording('video'),
-                    },
-                    {
-                        text: 'Cancel',
-                        style: 'cancel',
-                    },
-                ]
-            );
+        if (isRecording) stopRecording();
+        else {
+            Alert.alert('Start Recording', 'Choose type', [
+                { text: 'Audio Only', onPress: () => startRecording('audio') },
+                { text: 'Video', onPress: () => startRecording('video') },
+                { text: 'Cancel', style: 'cancel' },
+            ]);
         }
     };
 
-    const formatDuration = (seconds) => {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    const formatDuration = (seconds) => `${Math.floor(seconds / 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
+
+    const quickActions = [
+        { id: 'sos', title: 'SOS', icon: 'warning', color: colors.error, bgColor: colors.error + '15', isEmergency: true },
+        { id: 'fakecall', title: 'Fake Call', icon: 'call', color: colors.info, bgColor: colors.info + '15' },
+        { id: 'siren', title: 'Siren', icon: 'volume-high', color: colors.warning, bgColor: colors.warning + '15' },
+        { id: 'share', title: 'Share Location', icon: 'share', color: colors.success, bgColor: colors.success + '15' },
+        { id: 'record', title: isRecording ? formatDuration(recordingDuration) : 'Record', icon: isRecording ? 'stop-circle' : 'videocam', color: isRecording ? colors.error : '#8B5CF6', bgColor: (isRecording ? colors.error : '#8B5CF6') + '15' },
+        { id: 'live', title: 'Live Track', icon: 'location', color: '#6366F1', bgColor: '#6366F1' + '15' },
+    ];
+
+    const handleQuickAction = (action) => {
+        switch (action.id) {
+            case 'sos':
+                if (isSOSActive) cancelSOS();
+                else sendEmergencyAlert(true);
+                break;
+            case 'fakecall':
+                if (isFakeCallActive) {
+                    Alert.alert('Fake Call', `Time: ${formatTime(fakeCallTimer)}`, [{ text: 'Continue', style: 'cancel' }, { text: 'End', style: 'destructive', onPress: stopFakeCall }]);
+                } else startFakeCall();
+                break;
+            case 'siren': toggleSiren(); break;
+            case 'share': shareLocation(); break;
+            case 'record': toggleRecording(); break;
+            case 'live': navigation.navigate('LiveTracking'); break;
+        }
     };
 
-    const safetyFeatures = [
-        {
-            id: 'fakecall',
-            title: 'Fake Call',
-            icon: 'call',
-            color: colors.info,
-            isActive: isFakeCallActive,
-            onPress: () => {
-                if (isFakeCallActive) {
-                    Alert.alert(
-                        'Fake Call Active',
-                        `Time remaining: ${formatTime(fakeCallTimer)}`,
-                        [
-                            { text: 'Continue', style: 'cancel' },
-                            { text: 'End Call', style: 'destructive', onPress: stopFakeCall },
-                        ]
-                    );
-                } else {
-                    startFakeCall();
-                }
-            }
-        },
-        {
-            id: 'siren',
-            title: 'Siren',
-            icon: 'volume-high',
-            color: colors.warning,
-            isActive: isSirenActive,
-            onPress: toggleSiren
-        },
-        {
-            id: 'share',
-            title: 'Share Location',
-            icon: 'share',
-            color: colors.success,
-            onPress: shareLocation
-        },
-        {
-            id: 'liveShare',
-            title: 'Live Safety Share',
-            icon: 'videocam',
-            color: '#EF4444',
-            onPress: () => navigation.navigate('LiveShare')
-        },
-        {
-            id: 'record',
-            title: isRecording ? `Recording ${formatDuration(recordingDuration)}` : 'Record Evidence',
-            icon: isRecording ? 'stop-circle' : 'videocam',
-            color: isRecording ? colors.error : '#8B5CF6',
-            isActive: isRecording,
-            onPress: toggleRecording
-        },
-        {
-            id: 'behavior',
-            title: 'Behavior Analysis',
-            icon: 'analytics',
-            color: '#6366F1',
-            onPress: () => navigation.navigate('BehaviorPattern')
-        },
-        {
-            id: 'voiceKeyword',
-            title: 'Voice Keyword',
-            icon: 'mic',
-            color: '#EC4899',
-            onPress: () => navigation.navigate('VoiceKeyword')
-        },
-        {
-            id: 'volumeButton',
-            title: 'Volume Button',
-            icon: 'volume-high',
-            color: '#F59E0B',
-            onPress: () => navigation.navigate('VolumeButton')
-        },
+    const secondaryFeatures = [
+        { id: 'liveShare', title: 'Live Safety Share', icon: 'videocam', color: '#EF4444', onPress: () => navigation.navigate('LiveShare') },
+        { id: 'behavior', title: 'Behavior Analysis', icon: 'analytics', color: '#6366F1', onPress: () => navigation.navigate('BehaviorPattern') },
+        { id: 'voiceKeyword', title: 'Voice Keyword', icon: 'mic', color: '#EC4899', onPress: () => navigation.navigate('VoiceKeyword') },
+        { id: 'volumeButton', title: 'Volume Button SOS', icon: 'volume-high', color: '#F59E0B', onPress: () => navigation.navigate('VolumeButton') },
     ];
 
     return (
-        <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-            <View style={[styles.header, { backgroundColor: colors.error }]}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                    <Ionicons name="arrow-back" size={24} color={colors.white} />
-                </TouchableOpacity>
-                <Ionicons name="shield" size={48} color={colors.white} />
-                <Text style={[styles.headerTitle, { color: colors.white }]}>Women Safety</Text>
-                <Text style={[styles.headerSubtitle, { color: colors.white + 'CC' }]}>
-                    Emergency features to keep you safe
-                </Text>
-            </View>
-
-            <View style={styles.content}>
-                {/* SOS Active Banner */}
-                {isSOSActive && (
-                    <View style={[styles.sosActiveBanner, { backgroundColor: colors.error }]}>
-                        <Ionicons name="locate" size={24} color={colors.white} />
-                        <View style={styles.sosActiveInfo}>
-                            <Text style={[styles.sosActiveTitle, { color: colors.white }]}>🚨 SOS ACTIVE</Text>
-                            <Text style={[styles.sosActiveSubtitle, { color: colors.white }]}>
-                                Live location tracking enabled • Sending updates every 30s
-                            </Text>
-                            {/* Battery and Signal Status */}
-                            {(batteryStatus || signalStatus) && (
-                                <View style={styles.deviceStatusRow}>
-                                    {batteryStatus && (
-                                        <View style={[styles.deviceStatusBadge, { backgroundColor: batteryStatus.color + '40' }]}>
-                                            <Ionicons
-                                                name={batteryStatus.isCharging ? "battery-charging" : "battery-full"}
-                                                size={14}
-                                                color={colors.white}
-                                            />
-                                            <Text style={[styles.deviceStatusText, { color: colors.white }]}>
-                                                {batteryStatus.level}%
-                                            </Text>
-                                        </View>
-                                    )}
-                                    {signalStatus && (
-                                        <View style={[styles.deviceStatusBadge, { backgroundColor: signalStatus.network.signalColor + '40' }]}>
-                                            <Ionicons
-                                                name={signalStatus.network.isConnected ? "signal" : "signal-off"}
-                                                size={14}
-                                                color={colors.white}
-                                            />
-                                            <Text style={[styles.deviceStatusText, { color: colors.white }]}>
-                                                {signalStatus.network.signalLabel}
-                                            </Text>
-                                        </View>
-                                    )}
-                                    {signalStatus && (
-                                        <View style={[styles.deviceStatusBadge, { backgroundColor: signalStatus.gps.accuracyColor + '40' }]}>
-                                            <Ionicons
-                                                name="location"
-                                                size={14}
-                                                color={colors.white}
-                                            />
-                                            <Text style={[styles.deviceStatusText, { color: colors.white }]}>
-                                                {signalStatus.gps.accuracyLabel}
-                                            </Text>
-                                        </View>
-                                    )}
-                                </View>
-                            )}
-                            {/* Signal Warning */}
-                            {signalWarning && (
-                                <View style={[styles.signalWarningBanner, { backgroundColor: colors.warning + '30' }]}>
-                                    <Ionicons name="warning" size={14} color={colors.white} />
-                                    <Text style={[styles.signalWarningText, { color: colors.white }]}>
-                                        {signalWarning}
-                                    </Text>
-                                </View>
-                            )}
-                        </View>
-                        <TouchableOpacity
-                            style={[styles.cancelSOSButton, { backgroundColor: colors.white }]}
-                            onPress={cancelSOS}
-                        >
-                            <Text style={[styles.cancelSOSButtonText, { color: colors.error }]}>CANCEL</Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
-
-                <TouchableOpacity
-                    style={[
-                        styles.sosButton,
-                        { backgroundColor: isSOSActive ? colors.warning : colors.error, ...shadows.large },
-                        isSOSActive && styles.sosButtonActive
-                    ]}
-                    onPress={() => {
-                        if (isSOSActive) {
-                            cancelSOS();
-                        } else {
-                            sendEmergencyAlert(true); // Immediate one-tap activation
-                        }
-                    }}
-                    disabled={isSending}
-                >
-                    {isSending ? (
-                        <ActivityIndicator size="large" color={colors.white} />
-                    ) : (
-                        <>
-                            <Ionicons name={isSOSActive ? 'close-circle' : 'warning'} size={48} color={colors.white} />
-                            <Text style={[styles.sosText, { color: colors.white }]}>
-                                {isSOSActive ? 'SOS ACTIVE - TAP TO CANCEL' : 'SOS'}
-                            </Text>
-                            <Text style={[styles.sosSubtext, { color: colors.white + 'CC' }]}>
-                                {isSOSActive ? 'Live tracking your location' : 'Press for Emergency (One-Tap)'}
-                            </Text>
-                        </>
-                    )}
-                </TouchableOpacity>
-
-                {/* Live Tracking Button */}
-                <TouchableOpacity
-                    style={[
-                        styles.liveTrackingButton,
-                        { backgroundColor: colors.primary, ...shadows.medium },
-                    ]}
-                    onPress={() => navigation.navigate('LiveTracking')}
-                >
-                    <Ionicons name="location" size={24} color="#fff" />
-                    <Text style={[styles.liveTrackingButtonText, { color: '#fff' }]}>
-                        Live Tracking
-                    </Text>
-                </TouchableOpacity>
-
-                {/* Fake Call Caller Name Settings */}
-                <View style={[styles.contactsCard, { backgroundColor: colors.card, borderRadius, ...shadows.small, marginBottom: 16 }]}>
-                    <View style={styles.sectionHeader}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <Ionicons name="call" size={20} color={colors.info} />
-                            <Text style={[styles.sectionTitle, { color: colors.text, marginLeft: 8 }]}>Fake Call Caller Name</Text>
-                        </View>
-                    </View>
-                    <TouchableOpacity
-                        style={[styles.settingRow, { borderColor: colors.border }]}
-                        onPress={handleEditCallerName}
-                    >
-                        <View style={styles.settingInfo}>
-                            <Text style={[styles.settingLabel, { color: colors.text }]}>Current Caller</Text>
-                            <Text style={[styles.settingValue, { color: colors.gray }]}>{fakeCallCallerName}</Text>
-                        </View>
-                        <Ionicons name="chevron-forward" size={20} color={colors.gray} />
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={[styles.header, { backgroundColor: colors.error }]}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                        <Ionicons name="arrow-back" size={24} color={colors.white} />
                     </TouchableOpacity>
-                    <Text style={[styles.settingHint, { color: colors.gray }]}>
-                        Customize the name that appears when you trigger a fake call
-                    </Text>
+                    <Ionicons name="shield-checkmark" size={40} color={colors.white} />
+                    <Text style={styles.headerTitle}>Women Safety</Text>
+                    <Text style={styles.headerSubtitle}>Your safety is our priority</Text>
                 </View>
 
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Safety Features</Text>
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.featuresScrollContent}
-                >
-                    <View style={styles.featuresGrid}>
-                        {safetyFeatures.map((feature) => (
-                            <TouchableOpacity
-                                key={feature.id}
-                                style={[
-                                    styles.featureCard,
-                                    {
-                                        backgroundColor: colors.card,
-                                        borderRadius,
-                                        ...shadows.small,
-                                        borderWidth: feature.isActive ? 2 : 0,
-                                        borderColor: feature.isActive ? colors.error : 'transparent',
-                                    }
-                                ]}
-                                onPress={feature.onPress}
-                            >
-                                <View style={[styles.featureIcon, { backgroundColor: feature.color + '20' }]}>
-                                    <Ionicons
-                                        name={feature.icon}
-                                        size={28}
-                                        color={feature.isActive ? colors.error : feature.color}
-                                    />
+                <View style={styles.content}>
+                    {isSOSActive && (
+                        <View style={[styles.sosActiveBanner, { backgroundColor: colors.error + '20', borderColor: colors.error }]}>
+                            <View style={styles.sosBannerLeft}>
+                                <Ionicons name="locate" size={28} color={colors.error} />
+                                <View style={styles.sosBannerInfo}>
+                                    <Text style={[styles.sosBannerTitle, { color: colors.error }]}>SOS ACTIVE</Text>
+                                    <Text style={[styles.sosBannerSubtitle, { color: colors.text }]}>Location tracking enabled</Text>
                                 </View>
-                                <Text style={[styles.featureTitle, { color: colors.text }]}>{feature.title}</Text>
-                                {feature.isActive && (
-                                    <View style={[styles.activeIndicator, { backgroundColor: colors.error }]}>
-                                        <Text style={styles.activeIndicatorText}>ACTIVE</Text>
+                            </View>
+                            <View style={styles.sosBannerRight}>
+                                {batteryStatus && (
+                                    <View style={[styles.statusChip, { backgroundColor: batteryStatus.level < 20 ? colors.error + '30' : colors.success + '30' }]}>
+                                        <Ionicons name="battery-full" size={14} color={batteryStatus.level < 20 ? colors.error : colors.success} />
+                                        <Text style={[styles.statusChipText, { color: colors.text }]}>{batteryStatus.level}%</Text>
                                     </View>
                                 )}
+                                <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: colors.error }]} onPress={cancelSOS}>
+                                    <Text style={styles.cancelBtnText}>STOP</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )}
+
+                    <View style={[styles.sosSection, { backgroundColor: colors.card, borderRadius: borderRadius.xl, ...shadows.large }]}>
+                        <TouchableOpacity
+                            style={[styles.sosButton, { backgroundColor: isSOSActive ? colors.warning : colors.error }]}
+                            onPress={() => handleQuickAction({ id: 'sos' })}
+                            disabled={isSending}
+                            activeOpacity={0.8}
+                        >
+                            {isSending ? (
+                                <ActivityIndicator size="large" color={colors.white} />
+                            ) : (
+                                <>
+                                    <Ionicons name={isSOSActive ? 'close-circle' : 'warning'} size={56} color={colors.white} />
+                                    <Text style={styles.sosButtonText}>{isSOSActive ? 'SOS ACTIVE' : 'SOS'}</Text>
+                                    <Text style={styles.sosButtonSubtext}>
+                                        {isSOSActive ? 'Tap to cancel' : 'Tap for Emergency'}
+                                    </Text>
+                                </>
+                            )}
+                        </TouchableOpacity>
+                        {isSOSActive && sosStartTime && (
+                            <Text style={[styles.trackingText, { color: colors.text }]}>
+                                Tracking since {new Date(sosStartTime).toLocaleTimeString()}
+                            </Text>
+                        )}
+                    </View>
+
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
+                    <View style={styles.quickActionsGrid}>
+                        {quickActions.map((action) => (
+                            <TouchableOpacity
+                                key={action.id}
+                                style={[styles.quickActionCard, { backgroundColor: action.bgColor, borderRadius: borderRadius.lg, borderWidth: action.isEmergency ? 2 : 0, borderColor: action.color }]}
+                                onPress={() => handleQuickAction(action)}
+                                activeOpacity={0.7}
+                            >
+                                <View style={[styles.quickActionIcon, { backgroundColor: action.color + '30' }]}>
+                                    <Ionicons name={action.icon} size={24} color={action.color} />
+                                </View>
+                                <Text style={[styles.quickActionTitle, { color: colors.text }]}>{action.title}</Text>
                             </TouchableOpacity>
                         ))}
                     </View>
-                </ScrollView>
 
-                <View style={styles.contactsHeader}>
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Emergency Contacts</Text>
-                    <TouchableOpacity
-                        style={[styles.addButton, { backgroundColor: colors.primary }]}
-                        onPress={() => setShowAddContact(true)}
-                    >
-                        <Ionicons name="add" size={20} color={colors.white} />
-                        <Text style={styles.addButtonText}>Add</Text>
-                    </TouchableOpacity>
-                </View>
-
-                <View style={[styles.contactsCard, { backgroundColor: colors.card, borderRadius, ...shadows.small }]}>
-                    {/* Warning for minimum contacts */}
-                    {emergencyContacts.length < 5 && (
-                        <View style={[styles.warningBanner, { backgroundColor: colors.warning + '20' }]}>
-                            <Ionicons name="warning" size={20} color={colors.warning} />
-                            <Text style={[styles.warningText, { color: colors.warning }]}>
-                                Add at least {5 - emergencyContacts.length} more contact(s) for complete safety coverage
-                            </Text>
-                        </View>
-                    )}
-
-                    {emergencyContacts.length > 0 ? (
-                        // Sort contacts by priority
-                        [...emergencyContacts].sort((a, b) => (a.priority || 99) - (b.priority || 99)).map((contact, index) => (
-                            <View
-                                key={contact.id}
-                                style={[
-                                    styles.contactItem,
-                                    index < emergencyContacts.length - 1 &&
-                                    { borderBottomWidth: 1, borderColor: colors.border }
-                                ]}
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>More Safety Tools</Text>
+                    <View style={styles.secondaryFeaturesGrid}>
+                        {secondaryFeatures.map((feature) => (
+                            <TouchableOpacity
+                                key={feature.id}
+                                style={[styles.secondaryFeatureCard, { backgroundColor: colors.card, borderRadius: borderRadius.md, ...shadows.sm }]}
+                                onPress={feature.onPress}
                             >
-                                {/* Priority Badge */}
-                                <View style={[styles.priorityBadge, { backgroundColor: index === 0 ? colors.error : colors.primary }]}>
-                                    <Text style={styles.priorityBadgeText}>
-                                        {index + 1}
-                                    </Text>
-                                </View>
-
-                                <Ionicons name="person-circle" size={40} color={colors.primary} />
-                                <View style={styles.contactInfo}>
-                                    <Text style={[styles.contactName, { color: colors.text }]}>{contact.name}</Text>
-                                    <Text style={[styles.contactPhone, { color: colors.gray }]}>{contact.phone}</Text>
-                                    {contact.priority && (
-                                        <Text style={[styles.priorityLabel, { color: colors.gray }]}>
-                                            Priority: {contact.priority}
-                                        </Text>
-                                    )}
-                                </View>
-
-                                {/* Reorder buttons */}
-                                <View style={styles.reorderButtons}>
-                                    <TouchableOpacity
-                                        onPress={() => reorderContacts(contact, 'up')}
-                                        style={styles.reorderButton}
-                                        disabled={index === 0}
-                                    >
-                                        <Ionicons
-                                            name="chevron-up"
-                                            size={20}
-                                            color={index === 0 ? colors.gray + '40' : colors.primary}
-                                        />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        onPress={() => reorderContacts(contact, 'down')}
-                                        style={styles.reorderButton}
-                                        disabled={index === emergencyContacts.length - 1}
-                                    >
-                                        <Ionicons
-                                            name="chevron-down"
-                                            size={20}
-                                            color={index === emergencyContacts.length - 1 ? colors.gray + '40' : colors.primary}
-                                        />
-                                    </TouchableOpacity>
-                                </View>
-
-                                <TouchableOpacity
-                                    onPress={() => callContact(contact.phone)}
-                                    style={styles.contactAction}
-                                >
-                                    <Ionicons name="call" size={24} color={colors.success} />
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    onPress={() => deleteEmergencyContact(contact)}
-                                    style={styles.contactAction}
-                                >
-                                    <Ionicons name="trash-outline" size={24} color={colors.error} />
-                                </TouchableOpacity>
-                            </View>
-                        ))
-                    ) : (
-                        <View style={styles.noContactsContainer}>
-                            <Ionicons name="person-add" size={48} color={colors.gray + '60'} />
-                            <Text style={[styles.noContacts, { color: colors.gray }]}>No emergency contacts added</Text>
-                            <Text style={[styles.noContactsSubtext, { color: colors.gray + '80' }]}>
-                                Add trusted contacts who will be notified in emergencies
-                            </Text>
-                        </View>
-                    )}
-                </View>
-
-                {/* Default Emergency Contacts Section */}
-                {defaultContacts.length > 0 && (
-                    <View style={[styles.contactsCard, { backgroundColor: colors.card, borderRadius, ...shadows.small }]}>
-                        <View style={styles.sectionHeader}>
-                            <Ionicons name="shield-checkmark" size={20} color={colors.error} />
-                            <Text style={[styles.sectionTitle, { color: colors.text }]}>Emergency Helpline Numbers</Text>
-                        </View>
-                        {defaultContacts.map((contact, index) => (
-                            <View
-                                key={contact.id}
-                                style={[
-                                    styles.contactItem,
-                                    index < defaultContacts.length - 1 &&
-                                    { borderBottomWidth: 1, borderColor: colors.border }
-                                ]}
-                            >
-                                <Ionicons name="warning" size={24} color={colors.error} />
-                                <View style={styles.contactInfo}>
-                                    <Text style={[styles.contactName, { color: colors.text }]}>{contact.name}</Text>
-                                    <Text style={[styles.contactPhone, { color: colors.gray }]}>{contact.phone}</Text>
-                                    {contact.description && (
-                                        <Text style={[styles.contactDescription, { color: colors.gray + '80' }]}>
-                                            {contact.description}
-                                        </Text>
-                                    )}
-                                </View>
-                                <TouchableOpacity
-                                    onPress={() => callContact(contact.phone)}
-                                    style={styles.contactAction}
-                                >
-                                    <Ionicons name="call" size={24} color={colors.success} />
-                                </TouchableOpacity>
-                            </View>
+                                <Ionicons name={feature.icon} size={22} color={feature.color} />
+                                <Text style={[styles.secondaryFeatureTitle, { color: colors.text }]}>{feature.title}</Text>
+                                <Ionicons name="chevron-forward" size={18} color={colors.gray} />
+                            </TouchableOpacity>
                         ))}
                     </View>
-                )}
 
-                {/* Location Status */}
-                {location && (
-                    <View style={[styles.locationCard, { backgroundColor: colors.card, borderRadius, ...shadows.small }]}>
-                        <View style={styles.locationRow}>
-                            <Ionicons name="location" size={20} color={colors.success} />
-                            <Text style={[styles.locationText, { color: colors.text }]}>
-                                Location: {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
-                            </Text>
-                        </View>
-                        <TouchableOpacity onPress={getCurrentLocation}>
-                            <Text style={[styles.refreshLocation, { color: colors.primary }]}>Refresh</Text>
+                    <View style={styles.sectionHeader}>
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>My Emergency Contacts</Text>
+                        <TouchableOpacity
+                            style={[styles.addBtn, { backgroundColor: colors.primary }]}
+                            onPress={() => { setTempCallerName(fakeCallCallerName); setShowCallerNameModal(true); }}
+                        >
+                            <Ionicons name="settings-outline" size={16} color={colors.white} />
                         </TouchableOpacity>
                     </View>
-                )}
-            </View>
 
-            {/* Add Contact Modal */}
-            <Modal
-                visible={showAddContact}
-                transparent
-                animationType="slide"
-                onRequestClose={() => setShowAddContact(false)}
-            >
+                    {emergencyContacts.length < 5 && (
+                        <View style={[styles.warningBanner, { backgroundColor: colors.warning + '15', borderRadius: borderRadius.md }]}>
+                            <Ionicons name="alert-circle" size={20} color={colors.warning} />
+                            <Text style={[styles.warningText, { color: colors.warning }]}>
+                                Add {5 - emergencyContacts.length} more contact{5 - emergencyContacts.length > 1 ? 's' : ''} for safety
+                            </Text>
+                        </View>
+                    )}
+
+                    <View style={[styles.contactsCard, { backgroundColor: colors.card, borderRadius: borderRadius.lg, ...shadows.sm }]}>
+                        {emergencyContacts.length > 0 ? (
+                            [...emergencyContacts].sort((a, b) => (a.priority || 99) - (b.priority || 99)).map((contact, index) => (
+                                <View key={contact.id} style={[styles.contactItem, index < emergencyContacts.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+                                    <View style={[styles.priorityBadge, { backgroundColor: index === 0 ? colors.error : colors.primary }]}>
+                                        <Text style={styles.priorityText}>{index + 1}</Text>
+                                    </View>
+                                    <Ionicons name="person-circle" size={44} color={colors.primary} />
+                                    <View style={styles.contactInfo}>
+                                        <Text style={[styles.contactName, { color: colors.text }]}>{contact.name}</Text>
+                                        <Text style={[styles.contactPhone, { color: colors.gray }]}>{contact.phone}</Text>
+                                    </View>
+                                    <TouchableOpacity style={styles.contactAction} onPress={() => callContact(contact.phone)}>
+                                        <Ionicons name="call" size={22} color={colors.success} />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={styles.contactAction} onPress={() => deleteEmergencyContact(contact)}>
+                                        <Ionicons name="trash-outline" size={22} color={colors.error} />
+                                    </TouchableOpacity>
+                                </View>
+                            ))
+                        ) : (
+                            <View style={styles.emptyContacts}>
+                                <Ionicons name="person-add" size={40} color={colors.gray} />
+                                <Text style={[styles.emptyText, { color: colors.gray }]}>No contacts added</Text>
+                                <Text style={[styles.emptySubtext, { color: colors.gray }]}>Add trusted contacts for emergencies</Text>
+                            </View>
+                        )}
+                        <TouchableOpacity
+                            style={[styles.addContactBtn, { borderColor: colors.primary }]}
+                            onPress={() => { setNewContactName(''); setNewContactPhone(''); setShowAddContact(true); }}
+                        >
+                            <Ionicons name="add-circle" size={24} color={colors.primary} />
+                            <Text style={[styles.addContactBtnText, { color: colors.primary }]}>Add Emergency Contact</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {defaultContacts.length > 0 && (
+                        <>
+                            <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>Emergency Helplines</Text>
+                            <View style={[styles.helplineCard, { backgroundColor: colors.card, borderRadius: borderRadius.lg, ...shadows.sm }]}>
+                                {defaultContacts.map((contact, index) => (
+                                    <View key={contact.id} style={[styles.contactItem, index < defaultContacts.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+                                        <Ionicons name="call" size={24} color={colors.error} />
+                                        <View style={styles.contactInfo}>
+                                            <Text style={[styles.contactName, { color: colors.text }]}>{contact.name}</Text>
+                                            <Text style={[styles.contactPhone, { color: colors.error }]}>{contact.phone}</Text>
+                                        </View>
+                                        <TouchableOpacity style={styles.contactAction} onPress={() => callContact(contact.phone)}>
+                                            <Ionicons name="call" size={22} color={colors.success} />
+                                        </TouchableOpacity>
+                                    </View>
+                                ))}
+                            </View>
+                        </>
+                    )}
+
+                    {location && (
+                        <TouchableOpacity style={[styles.locationCard, { backgroundColor: colors.card, borderRadius: borderRadius.md, ...shadows.sm }]} onPress={getCurrentLocation}>
+                            <View style={styles.locationRow}>
+                                <Ionicons name="location" size={18} color={colors.success} />
+                                <Text style={[styles.locationText, { color: colors.text }]}>
+                                    Your Location: {parseFloat(location.latitude).toFixed(4)}, {parseFloat(location.longitude).toFixed(4)}
+                                </Text>
+                            </View>
+                            <Text style={[styles.refreshText, { color: colors.primary }]}>Tap to refresh</Text>
+                        </TouchableOpacity>
+                    )}
+
+                    <View style={styles.bottomSpacer} />
+                </View>
+            </ScrollView>
+
+            <Modal visible={showAddContact} transparent animationType="slide" onRequestClose={() => setShowAddContact(false)}>
                 <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContent, { backgroundColor: colors.card, borderRadius }]}>
-                        <Text style={[styles.modalTitle, { color: colors.text }]}>Add Emergency Contact</Text>
+                    <View style={[styles.modalContent, { backgroundColor: colors.card, borderRadius: borderRadius.xl }]}>
+                        <View style={styles.modalHeader}>
+                            <Text style={[styles.modalTitle, { color: colors.text }]}>Add Emergency Contact</Text>
+                            <TouchableOpacity onPress={() => setShowAddContact(false)}>
+                                <Ionicons name="close" size={24} color={colors.gray} />
+                            </TouchableOpacity>
+                        </View>
 
                         <TextInput
                             style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                            placeholder="Name"
+                            placeholder="Contact Name"
                             placeholderTextColor={colors.gray}
                             value={newContactName}
                             onChangeText={setNewContactName}
@@ -1459,74 +791,48 @@ const WomenSafetyScreen = ({ navigation }) => {
                             keyboardType="phone-pad"
                         />
 
-                        {/* Priority Selection */}
                         <View style={styles.prioritySection}>
-                            <Text style={[styles.priorityLabel, { color: colors.text }]}>Priority (1 = highest):</Text>
+                            <Text style={[styles.priorityLabel, { color: colors.text }]}>Priority (1 = first contacted)</Text>
                             <View style={styles.priorityOptions}>
-                                {[1, 2, 3, 4, 5].map((priority) => (
+                                {[1, 2, 3, 4, 5].map((p) => (
                                     <TouchableOpacity
-                                        key={priority}
-                                        style={[
-                                            styles.priorityOption,
-                                            { borderColor: colors.border },
-                                            newContactPriority === priority && { backgroundColor: colors.primary, borderColor: colors.primary }
-                                        ]}
-                                        onPress={() => setNewContactPriority(priority)}
+                                        key={p}
+                                        style={[styles.priorityOption, { borderColor: colors.border }, newContactPriority === p && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+                                        onPress={() => setNewContactPriority(p)}
                                     >
-                                        <Text style={[
-                                            styles.priorityOptionText,
-                                            { color: newContactPriority === priority ? colors.white : colors.text }
-                                        ]}>
-                                            {priority}
-                                        </Text>
+                                        <Text style={[styles.priorityOptionText, { color: newContactPriority === p ? colors.white : colors.text }]}>{p}</Text>
                                     </TouchableOpacity>
                                 ))}
                             </View>
                         </View>
 
                         <View style={styles.modalButtons}>
-                            <TouchableOpacity
-                                style={[styles.modalButton, { backgroundColor: colors.gray + '30' }]}
-                                onPress={() => {
-                                    setShowAddContact(false);
-                                    setNewContactName('');
-                                    setNewContactPhone('');
-                                    setNewContactPriority(1);
-                                }}
-                            >
-                                <Text style={[styles.modalButtonText, { color: colors.text }]}>Cancel</Text>
+                            <TouchableOpacity style={[styles.modalBtn, { backgroundColor: colors.gray + '30' }]} onPress={() => setShowAddContact(false)}>
+                                <Text style={[styles.modalBtnText, { color: colors.text }]}>Cancel</Text>
                             </TouchableOpacity>
-
                             <TouchableOpacity
-                                style={[styles.modalButton, { backgroundColor: colors.primary }]}
+                                style={[styles.modalBtn, { backgroundColor: colors.primary }]}
                                 onPress={addEmergencyContact}
                                 disabled={isAddingContact}
                             >
-                                {isAddingContact ? (
-                                    <ActivityIndicator size="small" color={colors.white} />
-                                ) : (
-                                    <Text style={[styles.modalButtonText, { color: colors.white }]}>Add</Text>
-                                )}
+                                {isAddingContact ? <ActivityIndicator size="small" color={colors.white} /> : <Text style={[styles.modalBtnText, { color: colors.white }]}>Add Contact</Text>}
                             </TouchableOpacity>
                         </View>
                     </View>
                 </View>
             </Modal>
 
-            {/* Caller Name Modal */}
-            <Modal
-                visible={showCallerNameModal}
-                transparent
-                animationType="slide"
-                onRequestClose={() => setShowCallerNameModal(false)}
-            >
+            <Modal visible={showCallerNameModal} transparent animationType="slide" onRequestClose={() => setShowCallerNameModal(false)}>
                 <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContent, { backgroundColor: colors.card, borderRadius }]}>
-                        <Text style={[styles.modalTitle, { color: colors.text }]}>Set Fake Call Caller Name</Text>
+                    <View style={[styles.modalContent, { backgroundColor: colors.card, borderRadius: borderRadius.xl }]}>
+                        <View style={styles.modalHeader}>
+                            <Text style={[styles.modalTitle, { color: colors.text }]}>Fake Call Settings</Text>
+                            <TouchableOpacity onPress={() => setShowCallerNameModal(false)}>
+                                <Ionicons name="close" size={24} color={colors.gray} />
+                            </TouchableOpacity>
+                        </View>
 
-                        <Text style={[styles.modalSubtitle, { color: colors.gray, marginBottom: 12 }]}>
-                            This name will appear when you trigger a fake call
-                        </Text>
+                        <Text style={[styles.modalSubtitle, { color: colors.gray }]}>Set the caller name for fake calls</Text>
 
                         <TextInput
                             style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
@@ -1538,407 +844,87 @@ const WomenSafetyScreen = ({ navigation }) => {
                         />
 
                         <View style={styles.modalButtons}>
-                            <TouchableOpacity
-                                style={[styles.modalButton, { backgroundColor: colors.gray + '30' }]}
-                                onPress={() => setShowCallerNameModal(false)}
-                            >
-                                <Text style={[styles.modalButtonText, { color: colors.text }]}>Cancel</Text>
+                            <TouchableOpacity style={[styles.modalBtn, { backgroundColor: colors.gray + '30' }]} onPress={() => setShowCallerNameModal(false)}>
+                                <Text style={[styles.modalBtnText, { color: colors.text }]}>Cancel</Text>
                             </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={[styles.modalButton, { backgroundColor: colors.info }]}
-                                onPress={handleSaveCallerName}
-                            >
-                                <Text style={[styles.modalButtonText, { color: colors.white }]}>Save</Text>
+                            <TouchableOpacity style={[styles.modalBtn, { backgroundColor: colors.info }]} onPress={handleSaveCallerName}>
+                                <Text style={[styles.modalBtnText, { color: colors.white }]}>Save</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
                 </View>
             </Modal>
-        </ScrollView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    backBtn: {
-        position: 'absolute',
-        top: 48,
-        left: 16,
-        zIndex: 10,
-        padding: 8,
-    },
-    header: {
-        alignItems: 'center',
-        padding: 24,
-        paddingTop: 48,
-        borderBottomLeftRadius: 24,
-        borderBottomRightRadius: 24,
-    },
-    headerTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginTop: 12,
-    },
-    headerSubtitle: {
-        fontSize: 14,
-        marginTop: 4,
-    },
-    content: {
-        padding: 16,
-    },
-    sosButton: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 32,
-        borderRadius: 100,
-        alignSelf: 'center',
-        marginVertical: 24,
-        width: 180,
-        height: 180,
-    },
-    sosButtonActive: {
-        borderWidth: 4,
-        borderColor: '#FFFFFF',
-    },
-    liveTrackingButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 14,
-        paddingHorizontal: 24,
-        borderRadius: 12,
-        alignSelf: 'center',
-        marginBottom: 16,
-    },
-    liveTrackingButtonText: {
-        fontSize: 16,
-        fontWeight: '600',
-        marginLeft: 8,
-    },
-    sosActiveBanner: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 12,
-        borderRadius: 12,
-        marginBottom: 16,
-    },
-    sosActiveInfo: {
-        flex: 1,
-        marginLeft: 12,
-    },
-    sosActiveTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-    sosActiveSubtitle: {
-        fontSize: 12,
-        marginTop: 2,
-    },
-    deviceStatusRow: {
-        flexDirection: 'row',
-        marginTop: 8,
-        gap: 8,
-    },
-    deviceStatusBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 12,
-        gap: 4,
-    },
-    deviceStatusText: {
-        fontSize: 11,
-        fontWeight: '600',
-    },
-    signalWarningBanner: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 8,
-        marginTop: 8,
-        gap: 4,
-    },
-    signalWarningText: {
-        fontSize: 10,
-        flex: 1,
-    },
-    cancelSOSButton: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-    },
-    cancelSOSButtonText: {
-        fontWeight: 'bold',
-        fontSize: 12,
-    },
-    sosText: {
-        fontSize: 32,
-        fontWeight: 'bold',
-        marginTop: 8,
-    },
-    sosSubtext: {
-        fontSize: 12,
-        marginTop: 4,
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        marginBottom: 12,
-    },
-    featuresGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-    },
-    featuresScrollContent: {
-        paddingVertical: 8,
-    },
-    featureCard: {
-        alignItems: 'center',
-        padding: 16,
-        width: 120,
-        marginHorizontal: 8,
-        marginVertical: 8,
-        position: 'relative',
-    },
-    featureIcon: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    featureTitle: {
-        fontSize: 14,
-        fontWeight: '500',
-        textAlign: 'center',
-    },
-    activeIndicator: {
-        position: 'absolute',
-        top: 8,
-        right: 8,
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 4,
-    },
-    activeIndicatorText: {
-        color: 'white',
-        fontSize: 8,
-        fontWeight: 'bold',
-    },
-    contactsHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: 24,
-        marginBottom: 12,
-    },
-    sectionHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    addButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-    },
-    addButtonText: {
-        color: 'white',
-        fontWeight: '600',
-        marginLeft: 4,
-    },
-    contactsCard: {
-        padding: 16,
-    },
-    contactItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 12,
-    },
-    contactInfo: {
-        flex: 1,
-        marginLeft: 12,
-    },
-    contactName: {
-        fontSize: 16,
-        fontWeight: '500',
-    },
-    contactPhone: {
-        fontSize: 14,
-        marginTop: 2,
-    },
-    contactDescription: {
-        fontSize: 12,
-        marginTop: 2,
-    },
-    contactAction: {
-        padding: 8,
-    },
-    // Priority and contact management styles
-    priorityBadge: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 8,
-    },
-    priorityBadgeText: {
-        color: 'white',
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
-    priorityLabel: {
-        fontSize: 10,
-        marginTop: 2,
-    },
-    reorderButtons: {
-        flexDirection: 'column',
-        marginRight: 4,
-    },
-    reorderButton: {
-        padding: 2,
-    },
-    warningBanner: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 12,
-        borderRadius: 8,
-        marginBottom: 12,
-    },
-    warningText: {
-        flex: 1,
-        marginLeft: 8,
-        fontSize: 12,
-        fontWeight: '500',
-    },
-    noContactsContainer: {
-        alignItems: 'center',
-        padding: 24,
-    },
-    noContacts: {
-        textAlign: 'center',
-        marginTop: 12,
-    },
-    noContactsSubtext: {
-        textAlign: 'center',
-        fontSize: 12,
-        marginTop: 4,
-    },
-    locationCard: {
-        padding: 16,
-        marginTop: 16,
-    },
-    locationRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    locationText: {
-        fontSize: 14,
-        marginLeft: 8,
-    },
-    refreshLocation: {
-        fontSize: 14,
-        fontWeight: '600',
-        marginTop: 8,
-        textAlign: 'right',
-    },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    modalContent: {
-        width: '85%',
-        padding: 24,
-    },
-    modalTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginBottom: 20,
-        textAlign: 'center',
-    },
-    input: {
-        borderWidth: 1,
-        borderRadius: 8,
-        padding: 12,
-        marginBottom: 16,
-        fontSize: 16,
-    },
-    // Priority modal styles
-    prioritySection: {
-        marginVertical: 12,
-    },
-    priorityOptions: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: 8,
-    },
-    priorityOption: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        borderWidth: 2,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    priorityOptionText: {
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    modalButtons: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: 8,
-    },
-    modalButton: {
-        flex: 1,
-        padding: 14,
-        borderRadius: 8,
-        alignItems: 'center',
-        marginHorizontal: 4,
-    },
-    modalButtonText: {
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    // Setting row styles
-    settingRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-    },
-    settingInfo: {
-        flex: 1,
-    },
-    settingLabel: {
-        fontSize: 16,
-        fontWeight: '500',
-    },
-    settingValue: {
-        fontSize: 14,
-        marginTop: 2,
-    },
-    settingHint: {
-        fontSize: 12,
-        marginTop: 8,
-        lineHeight: 18,
-    },
-    modalSubtitle: {
-        fontSize: 14,
-        lineHeight: 20,
-    },
+    container: { flex: 1 },
+    backBtn: { position: 'absolute', top: 48, left: 16, zIndex: 10, padding: 8 },
+    header: { alignItems: 'center', padding: 24, paddingTop: 48, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
+    headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#fff', marginTop: 8 },
+    headerSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.8)', marginTop: 4 },
+    content: { padding: 16 },
+    sosActiveBanner: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, borderRadius: 12, borderWidth: 1, marginBottom: 16 },
+    sosBannerLeft: { flexDirection: 'row', alignItems: 'center' },
+    sosBannerInfo: { marginLeft: 10 },
+    sosBannerTitle: { fontSize: 16, fontWeight: 'bold' },
+    sosBannerSubtitle: { fontSize: 12 },
+    sosBannerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    statusChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, gap: 4 },
+    statusChipText: { fontSize: 12, fontWeight: '600' },
+    cancelBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
+    cancelBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
+    sosSection: { alignItems: 'center', padding: 24, marginBottom: 16 },
+    sosButton: { width: 160, height: 160, borderRadius: 80, justifyContent: 'center', alignItems: 'center', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+    sosButtonText: { fontSize: 28, fontWeight: 'bold', color: '#fff', marginTop: 8 },
+    sosButtonSubtext: { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 4 },
+    trackingText: { fontSize: 12, marginTop: 12 },
+    sectionTitle: { fontSize: 18, fontWeight: '600', marginBottom: 12, marginTop: 8 },
+    quickActionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 8 },
+    quickActionCard: { width: '30%', aspectRatio: 1, justifyContent: 'center', alignItems: 'center', padding: 8 },
+    quickActionIcon: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginBottom: 6 },
+    quickActionTitle: { fontSize: 11, fontWeight: '600', textAlign: 'center' },
+    secondaryFeaturesGrid: { gap: 8, marginBottom: 16 },
+    secondaryFeatureCard: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
+    secondaryFeatureTitle: { flex: 1, fontSize: 15, fontWeight: '500' },
+    sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    addBtn: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+    warningBanner: { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 10, marginBottom: 12 },
+    warningText: { flex: 1, fontSize: 13, fontWeight: '500' },
+    contactsCard: { padding: 16 },
+    contactItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 10 },
+    priorityBadge: { width: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center', marginRight: 2 },
+    priorityText: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
+    contactInfo: { flex: 1 },
+    contactName: { fontSize: 15, fontWeight: '500' },
+    contactPhone: { fontSize: 13, marginTop: 2 },
+    contactAction: { padding: 8 },
+    emptyContacts: { alignItems: 'center', padding: 20 },
+    emptyText: { fontSize: 15, fontWeight: '500', marginTop: 10 },
+    emptySubtext: { fontSize: 12, marginTop: 4 },
+    addContactBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, marginTop: 8, borderWidth: 1, borderStyle: 'dashed', borderRadius: 10, gap: 8 },
+    addContactBtnText: { fontSize: 14, fontWeight: '600' },
+    helplineCard: { padding: 16 },
+    locationCard: { padding: 14, marginTop: 8 },
+    locationRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    locationText: { fontSize: 13, flex: 1 },
+    refreshText: { fontSize: 12, marginTop: 6, textAlign: 'right' },
+    bottomSpacer: { height: 40 },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+    modalContent: { width: '90%', padding: 24 },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+    modalTitle: { fontSize: 20, fontWeight: 'bold' },
+    modalSubtitle: { fontSize: 13, marginBottom: 16 },
+    input: { borderWidth: 1, borderRadius: 10, padding: 14, marginBottom: 14, fontSize: 16 },
+    prioritySection: { marginBottom: 16 },
+    priorityLabel: { fontSize: 14, fontWeight: '500', marginBottom: 10 },
+    priorityOptions: { flexDirection: 'row', justifyContent: 'space-between' },
+    priorityOption: { width: 48, height: 48, borderRadius: 24, borderWidth: 2, justifyContent: 'center', alignItems: 'center' },
+    priorityOptionText: { fontSize: 16, fontWeight: '600' },
+    modalButtons: { flexDirection: 'row', gap: 12, marginTop: 8 },
+    modalBtn: { flex: 1, padding: 14, borderRadius: 10, alignItems: 'center' },
+    modalBtnText: { fontSize: 16, fontWeight: '600' },
 });
 
 export default WomenSafetyScreen;

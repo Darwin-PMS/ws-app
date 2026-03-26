@@ -148,6 +148,10 @@ class LocationService {
                     latitude: location.latitude,
                     longitude: location.longitude,
                     accuracy: location.accuracy,
+                    altitude: location.altitude || null,
+                    speed: location.speed || null,
+                    heading: location.heading || null,
+                    timestamp: location.timestamp || Date.now(),
                 });
             } catch (error) {
                 console.error('Failed to save location:', error);
@@ -174,6 +178,10 @@ class LocationService {
     // Get current location and save to server immediately
     async saveCurrentLocation(userId) {
         try {
+            if (!userId) {
+                console.error('📍 User ID is missing');
+                return { success: false, message: 'User session not found' };
+            }
             console.log('📍 getCurrentLocation called for user:', userId);
             const locationResult = await this.getCurrentLocation();
             console.log('📍 Location result:', locationResult);
@@ -184,6 +192,10 @@ class LocationService {
                     latitude: locationResult.location.latitude,
                     longitude: locationResult.location.longitude,
                     accuracy: locationResult.location.accuracy,
+                    altitude: locationResult.location.altitude || null,
+                    speed: locationResult.location.speed || null,
+                    heading: locationResult.location.heading || null,
+                    timestamp: locationResult.location.timestamp || Date.now(),
                 });
                 console.log('📍 Location saved successfully');
                 return { success: true, location: locationResult.location };

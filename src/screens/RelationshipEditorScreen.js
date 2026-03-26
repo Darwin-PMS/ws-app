@@ -41,11 +41,17 @@ const RelationshipEditorScreen = ({ navigation, route }) => {
             return;
         }
 
+        if (!userId) {
+            Alert.alert('Error', 'User session not found. Please log in again.');
+            return;
+        }
+
         try {
             const response = await familyService.addRelationship(familyId, {
-                fromUserId: userId,
-                toUserId: memberId,
-                relationshipType: selectedRelationship,
+                from_user_id: userId,
+                to_user_id: memberId,
+                relationship_type: selectedRelationship,
+                notes: notes,
             });
 
             if (response.success) {

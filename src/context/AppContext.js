@@ -111,6 +111,12 @@ export const AppProvider = ({ children }) => {
             // Set up auth failure callback
             apiClient.setAuthFailureCallback(handleAuthFailure);
 
+            // Set up token update callback for databaseService
+            databaseService.setTokenUpdateCallback(async (newToken) => {
+                await AsyncStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, newToken);
+                setAuthToken(newToken);
+            });
+
             const storedApiKey = await AsyncStorage.getItem(STORAGE_KEYS.API_KEY);
             const storedModel = await AsyncStorage.getItem(STORAGE_KEYS.SELECTED_MODEL);
             const storedTemp = await AsyncStorage.getItem(STORAGE_KEYS.TEMPERATURE);

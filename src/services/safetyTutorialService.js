@@ -5,27 +5,36 @@ import { mobileApi, ENDPOINTS } from './api/mobileApi';
 
 export const safetyTutorialService = {
     async getTutorials(params = {}) {
-        return mobileApi.get(ENDPOINTS.safetyTutorials.list);
+        let url = ENDPOINTS.safetyTutorials.list;
+        if (Object.keys(params).length > 0) {
+            const queryString = new URLSearchParams(params).toString();
+            url = `${url}?${queryString}`;
+        }
+        return mobileApi.get(url, { skipAuth: true });
     },
 
     async getTutorialById(id) {
-        return mobileApi.get(ENDPOINTS.safetyTutorials.byId(id));
+        return mobileApi.get(ENDPOINTS.safetyTutorials.byId(id), { skipAuth: true });
     },
 
     async getCategories() {
-        return mobileApi.get(ENDPOINTS.safetyTutorials.categories);
+        return mobileApi.get(ENDPOINTS.safetyTutorials.categories, { skipAuth: true });
     },
 
     async searchTutorials(keyword) {
-        return mobileApi.get(ENDPOINTS.safetyTutorials.search);
+        let url = ENDPOINTS.safetyTutorials.search;
+        if (keyword) {
+            url = `${url}?keyword=${encodeURIComponent(keyword)}`;
+        }
+        return mobileApi.get(url, { skipAuth: true });
     },
 
     async getTutorialsByCategory(categoryId) {
-        return mobileApi.get(ENDPOINTS.safetyTutorials.byCategory(categoryId));
+        return mobileApi.get(ENDPOINTS.safetyTutorials.byCategory(categoryId), { skipAuth: true });
     },
 
     async getTutorialsByDifficulty(difficulty) {
-        return mobileApi.get(ENDPOINTS.safetyTutorials.byDifficulty(difficulty));
+        return mobileApi.get(ENDPOINTS.safetyTutorials.byDifficulty(difficulty), { skipAuth: true });
     }
 };
 

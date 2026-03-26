@@ -1,4 +1,5 @@
-import { API_CONFIG, ENDPOINTS } from './api/endpoints';
+import { API_CONFIG } from './api/endpoints';
+import databaseService from './databaseService';
 
 const API_BASE_URL = `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile`;
 
@@ -9,6 +10,7 @@ class LiveStreamService {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${databaseService.token}`,
                 },
                 body: JSON.stringify({
                     userId,
@@ -27,7 +29,11 @@ class LiveStreamService {
 
     async getSession(sessionId) {
         try {
-            const response = await fetch(`${API_BASE_URL}/live-stream/session/${sessionId}`);
+            const response = await fetch(`${API_BASE_URL}/live-stream/session/${sessionId}`, {
+                headers: {
+                    'Authorization': `Bearer ${databaseService.token}`,
+                },
+            });
             const data = await response.json();
             return data;
         } catch (error) {
@@ -42,6 +48,7 @@ class LiveStreamService {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${databaseService.token}`,
                 },
                 body: JSON.stringify({ streamType, isActive }),
             });
@@ -59,6 +66,7 @@ class LiveStreamService {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${databaseService.token}`,
                 },
                 body: JSON.stringify({ latitude, longitude }),
             });
@@ -74,6 +82,9 @@ class LiveStreamService {
         try {
             const response = await fetch(`${API_BASE_URL}/live-stream/session/${sessionId}/stop`, {
                 method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${databaseService.token}`,
+                },
             });
             const data = await response.json();
             return data;
@@ -85,7 +96,11 @@ class LiveStreamService {
 
     async getActiveSessions(userId) {
         try {
-            const response = await fetch(`${API_BASE_URL}/live-stream/active/${userId}`);
+            const response = await fetch(`${API_BASE_URL}/live-stream/active/${userId}`, {
+                headers: {
+                    'Authorization': `Bearer ${databaseService.token}`,
+                },
+            });
             const data = await response.json();
             return data;
         } catch (error) {
@@ -96,7 +111,11 @@ class LiveStreamService {
 
     async getSessionHistory(userId, limit = 20, offset = 0) {
         try {
-            const response = await fetch(`${API_BASE_URL}/live-stream/history/${userId}?limit=${limit}&offset=${offset}`);
+            const response = await fetch(`${API_BASE_URL}/live-stream/history/${userId}?limit=${limit}&offset=${offset}`, {
+                headers: {
+                    'Authorization': `Bearer ${databaseService.token}`,
+                },
+            });
             const data = await response.json();
             return data;
         } catch (error) {
@@ -111,6 +130,7 @@ class LiveStreamService {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${databaseService.token}`,
                 },
                 body: JSON.stringify({ viewerId, viewerName, viewerPhone }),
             });

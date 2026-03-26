@@ -28,7 +28,7 @@ export const UserProvider = ({ children }) => {
             const loadSettings = async () => {
                 try {
                     const response = await userService.getUserSettings(userId);
-                    if (response.success) {
+                    if (response.success && response.settings) {
                         setUserSettings(response.settings);
                         
                         const locationEnabled = response.settings.location_enabled === 1 || response.settings.location_enabled === true;

@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useApp } from '../context/AppContext';
 
 // Import screens
 import HomeScreen from '../screens/HomeScreen';
@@ -52,10 +53,83 @@ import QRScreen from '../screens/QRScreen';
 import LiveShareScreen from '../screens/LiveShareScreen';
 import LiveReceiverScreen from '../screens/LiveReceiverScreen';
 import CommunityScreen from '../screens/CommunityScreen';
+import AppGuideScreen from '../screens/AppGuideScreen';
 import { TouchableOpacity } from 'react-native';
+
+// Import Admin screens
+import {
+    AdminDashboardScreen,
+    UserManagementScreen,
+    UserDetailScreen,
+    FamilyManagementScreen,
+    FamilyDetailsScreen as AdminFamilyDetailsScreen,
+    SOSAlertManagementScreen,
+    AdminLiveTrackingScreen,
+} from '../admin/screens';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
+
+// Admin Stack Navigator
+const AdminStack = () => {
+    const { colors } = useTheme();
+
+    return (
+        <Stack.Navigator
+            screenOptions={{
+                headerStyle: {
+                    backgroundColor: colors.background,
+                },
+                headerTintColor: colors.text,
+                headerTitleStyle: {
+                    fontWeight: '600',
+                },
+                headerShadowVisible: false,
+                contentStyle: {
+                    backgroundColor: colors.background,
+                },
+                headerBackVisible: true,
+                headerBackTitle: 'Back',
+            }}
+        >
+            <Stack.Screen
+                name="AdminDashboard"
+                component={AdminDashboardScreen}
+                options={{ title: 'Admin Dashboard', headerShown: false }}
+            />
+            <Stack.Screen
+                name="UserManagement"
+                component={UserManagementScreen}
+                options={{ title: 'User Management' }}
+            />
+            <Stack.Screen
+                name="UserDetail"
+                component={UserDetailScreen}
+                options={{ title: 'User Details' }}
+            />
+            <Stack.Screen
+                name="FamilyManagement"
+                component={FamilyManagementScreen}
+                options={{ title: 'Family Management' }}
+            />
+            <Stack.Screen
+                name="FamilyDetail"
+                component={AdminFamilyDetailsScreen}
+                options={{ title: 'Family Details' }}
+            />
+            <Stack.Screen
+                name="SOSManagement"
+                component={SOSAlertManagementScreen}
+                options={{ title: 'SOS Alerts' }}
+            />
+            <Stack.Screen
+                name="AdminLiveTracking"
+                component={AdminLiveTrackingScreen}
+                options={{ title: 'Live Tracking' }}
+            />
+        </Stack.Navigator>
+    );
+};
 
 // Core Services stack (More menu) - uses useTheme for reactive colors
 const CoreServicesStack = ({ navigation }) => {
@@ -310,6 +384,11 @@ const CoreServicesStack = ({ navigation }) => {
                 component={CommunityScreen}
                 options={{ title: 'Community' }}
             />
+            <Stack.Screen
+                name="AppGuide"
+                component={AppGuideScreen}
+                options={{ title: 'App Guide' }}
+            />
         </Stack.Navigator>
     );
 };
@@ -317,6 +396,8 @@ const CoreServicesStack = ({ navigation }) => {
 // Main tab navigator - uses useTheme for reactive colors
 const AppNavigator = () => {
     const { colors } = useTheme();
+    const { userRole } = useApp();
+    const isAdmin = userRole === 'admin';
 
     return (
         <Tab.Navigator
@@ -333,6 +414,9 @@ const AppNavigator = () => {
                             break;
                         case 'AIChat':
                             iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
+                            break;
+                        case 'Admin':
+                            iconName = focused ? 'shield-checkmark' : 'shield-checkmark-outline';
                             break;
                         case 'More':
                             iconName = focused ? 'menu' : 'menu-outline';
@@ -379,6 +463,16 @@ const AppNavigator = () => {
                     headerTitle: 'Welcome Home',
                 }}
             />
+            {isAdmin && (
+                <Tab.Screen
+                    name="Admin"
+                    component={AdminStack}
+                    options={{
+                        title: 'Admin',
+                        headerShown: false,
+                    }}
+                />
+            )}
             <Tab.Screen
                 name="Notifications"
                 component={NotificationScreen}

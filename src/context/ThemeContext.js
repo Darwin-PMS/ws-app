@@ -1,287 +1,210 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { AccessibilityInfo, Appearance, AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import themeService from '../services/themeService';
-import { darkColors, lightColors } from '../theme/theme';
 
 const THEME_PREFERENCE_KEY = '@theme_preference';
 
-// Default theme configuration (fallback)
-const defaultThemeConfig = {
-    colors: {
-        primary: '#8B5CF6',
-        primaryLight: '#A78BFA',
-        primaryDark: '#7C3AED',
-        secondary: '#EC4899',
-        secondaryLight: '#F472B6',
-        secondaryDark: '#DB2777',
-        accent: '#8B5CF6',
-        white: '#FFFFFF',
-        gray: '#71717A',
-        background: '#0F0F14',
-        backgroundLight: '#1A1A24',
-        backgroundLighter: '#252532',
-        surface: '#1E1E2C',
-        surfaceElevated: '#252532',
-        glass: 'rgba(30, 30, 44, 0.7)',
-        glassBorder: 'rgba(139, 92, 246, 0.2)',
-        glassHighlight: 'rgba(139, 92, 246, 0.1)',
-        text: '#FFFFFF',
-        textSecondary: '#A1A1AA',
-        textMuted: '#d7d7dfff',
-        textAccent: '#C4B5FD',
-        success: '#10B981',
-        warning: '#F59E0B',
-        error: '#EF4444',
-        danger: '#EF4444',
-        info: '#3B82F6',
-        userBubble: '#7C3AED',
-        aiBubble: '#1E1E2C',
-        aiBubbleBorder: '#3F3F5A',
-        card: '#1E1E2C',
-        tabBarBackground: '#14141B',
-        tabBarActive: '#8B5CF6',
-        tabBarInactive: '#71717A',
-        border: '#3F3F5A',
-        borderLight: '#27273A',
-        overlay: 'rgba(0, 0, 0, 0.6)',
-    },
-    typography: {
-        fontFamily: { regular: 'System', medium: 'System', bold: 'System' },
-        fontSize: { xs: 10, sm: 12, md: 14, lg: 16, xl: 18, xxl: 24, xxxl: 32, title: 28 },
-        fontWeight: { regular: '400', medium: '500', semibold: '600', bold: '700' },
-        lineHeight: { tight: 1.2, normal: 1.5, relaxed: 1.75 },
-    },
-    spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48 },
-    borderRadius: { sm: 8, md: 12, lg: 16, xl: 24, full: 9999 },
-    shadows: {
-        sm: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
-        small: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
-        md: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 4 },
-        medium: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 4 },
-        lg: { shadowColor: '#8B5CF6', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 16, elevation: 8 },
-        large: { shadowColor: '#8B5CF6', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 16, elevation: 8 },
-        glow: { shadowColor: '#8B5CF6', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 20, elevation: 10 },
-    },
+export const DARK_COLORS = {
+    primary: '#8B5CF6',
+    primaryLight: '#A78BFA',
+    primaryDark: '#7C3AED',
+    secondary: '#EC4899',
+    secondaryLight: '#F472B6',
+    secondaryDark: '#DB2777',
+    accent: '#8B5CF6',
+    white: '#FFFFFF',
+    gray: '#71717A',
+    background: '#0F0F14',
+    backgroundLight: '#1A1A24',
+    backgroundLighter: '#252532',
+    surface: '#1E1E2C',
+    surfaceElevated: '#252532',
+    glass: 'rgba(30, 30, 44, 0.7)',
+    glassBorder: 'rgba(139, 92, 246, 0.2)',
+    glassHighlight: 'rgba(139, 92, 246, 0.1)',
+    text: '#FFFFFF',
+    textSecondary: '#A1A1AA',
+    textMuted: '#71717A',
+    textAccent: '#C4B5FD',
+    success: '#10B981',
+    warning: '#F59E0B',
+    error: '#EF4444',
+    danger: '#EF4444',
+    info: '#3B82F6',
+    userBubble: '#7C3AED',
+    aiBubble: '#1E1E2C',
+    aiBubbleBorder: '#3F3F5A',
+    card: '#1E1E2C',
+    tabBarBackground: '#14141B',
+    tabBarActive: '#8B5CF6',
+    tabBarInactive: '#71717A',
+    border: '#3F3F5A',
+    borderLight: '#27273A',
+    overlay: 'rgba(0, 0, 0, 0.6)',
 };
 
-// Create the context with default values
-const ThemeContext = createContext({
-    theme: 'dark',
-    isDark: true,
-    colors: defaultThemeConfig.colors,
-    typography: defaultThemeConfig.typography,
-    spacing: defaultThemeConfig.spacing,
-    borderRadius: defaultThemeConfig.borderRadius,
-    shadows: defaultThemeConfig.shadows,
-    themeConfig: defaultThemeConfig,
-    isLoading: true,
-    isDynamic: false,
-    toggleTheme: () => { },
-    setTheme: () => { },
-    refreshTheme: () => { },
+export const LIGHT_COLORS = {
+    primary: '#8B5CF6',
+    primaryLight: '#A78BFA',
+    primaryDark: '#7C3AED',
+    secondary: '#EC4899',
+    secondaryLight: '#F472B6',
+    secondaryDark: '#DB2777',
+    accent: '#8B5CF6',
+    white: '#FFFFFF',
+    gray: '#71717A',
+    background: '#F8FAFC',
+    backgroundLight: '#F1F5F9',
+    backgroundLighter: '#E2E8F0',
+    surface: '#FFFFFF',
+    surfaceElevated: '#FFFFFF',
+    glass: 'rgba(255, 255, 255, 0.8)',
+    glassBorder: 'rgba(139, 92, 246, 0.15)',
+    glassHighlight: 'rgba(139, 92, 246, 0.05)',
+    text: '#1E293B',
+    textSecondary: '#64748B',
+    textMuted: '#94A3B8',
+    textAccent: '#7C3AED',
+    success: '#059669',
+    warning: '#D97706',
+    error: '#DC2626',
+    danger: '#DC2626',
+    info: '#2563EB',
+    userBubble: '#7C3AED',
+    aiBubble: '#F1F5F9',
+    aiBubbleBorder: '#E2E8F0',
+    card: '#FFFFFF',
+    tabBarBackground: '#FFFFFF',
+    tabBarActive: '#8B5CF6',
+    tabBarInactive: '#94A3B8',
+    border: '#E2E8F0',
+    borderLight: '#F1F5F9',
+    overlay: 'rgba(0, 0, 0, 0.4)',
+};
+
+export const DEFAULT_TYPOGRAPHY = {
+    fontFamily: { regular: 'System', medium: 'System', bold: 'System' },
+    fontSize: { xs: 10, sm: 12, md: 14, lg: 16, xl: 18, xxl: 24, xxxl: 32, title: 28 },
+    fontWeight: { regular: '400', medium: '500', semibold: '600', bold: '700' },
+    lineHeight: { tight: 1.2, normal: 1.5, relaxed: 1.75 },
+};
+
+export const DEFAULT_SPACING = {
+    xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48,
+};
+
+export const DEFAULT_BORDER_RADIUS = {
+    sm: 8, md: 12, lg: 16, xl: 24, full: 9999,
+};
+
+export const createShadows = (color = '#000', isDark = true) => ({
+    sm: { shadowColor: color, shadowOffset: { width: 0, height: 2 }, shadowOpacity: isDark ? 0.3 : 0.1, shadowRadius: 4, elevation: 2 },
+    small: { shadowColor: color, shadowOffset: { width: 0, height: 2 }, shadowOpacity: isDark ? 0.3 : 0.1, shadowRadius: 4, elevation: 2 },
+    md: { shadowColor: color, shadowOffset: { width: 0, height: 4 }, shadowOpacity: isDark ? 0.4 : 0.15, shadowRadius: 8, elevation: 4 },
+    medium: { shadowColor: color, shadowOffset: { width: 0, height: 4 }, shadowOpacity: isDark ? 0.4 : 0.15, shadowRadius: 8, elevation: 4 },
+    lg: { shadowColor: '#8B5CF6', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 16, elevation: 8 },
+    large: { shadowColor: '#8B5CF6', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 16, elevation: 8 },
+    glow: { shadowColor: '#8B5CF6', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 20, elevation: 10 },
 });
 
-/**
- * Theme Provider Component with Dynamic Backend Loading
- * 
- * Features:
- * - Fetches theme from backend API
- * - Caches theme locally for offline use
- * - Falls back to default theme on errors
- * - Supports runtime theme updates
- * - System preference detection
- */
+const DEFAULT_CONTEXT = {
+    theme: 'dark',
+    isDark: true,
+    colors: DARK_COLORS,
+    typography: DEFAULT_TYPOGRAPHY,
+    spacing: DEFAULT_SPACING,
+    borderRadius: DEFAULT_BORDER_RADIUS,
+    shadows: createShadows('#000', true),
+    isLoading: true,
+    isManualOverride: false,
+    toggleTheme: () => {},
+    setTheme: () => {},
+    refreshTheme: () => {},
+};
+
+const ThemeContext = createContext(DEFAULT_CONTEXT);
+
 export const ThemeProvider = ({ children }) => {
     const [themeMode, setThemeMode] = useState('dark');
-    const [themeConfig, setThemeConfig] = useState(defaultThemeConfig);
-    const [isInitialized, setIsInitialized] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    const [isDynamic, setIsDynamic] = useState(false);
-    const [isAccessibilityReduced, setIsAccessibilityReduced] = useState(false);
     const [isManualOverride, setIsManualOverride] = useState(false);
-    const baseThemeColors = useRef(null);
+    const [backendTheme, setBackendTheme] = useState(null);
 
     const isDark = themeMode === 'dark';
 
-    // Extract theme values from config with deep merge to ensure all colors exist
     const colors = useMemo(() => {
-        const baseColors = themeConfig.colors || defaultThemeConfig.colors;
-        const modeColors = isDark ? darkColors : lightColors;
-        
-        if (isManualOverride && baseThemeColors.current) {
-            return {
-                ...baseThemeColors.current,
-                ...modeColors,
-                primary: baseColors.primary || modeColors.primary,
-                primaryLight: baseColors.primaryLight || modeColors.primaryLight,
-                primaryDark: baseColors.primaryDark || modeColors.primaryDark,
-                secondary: baseColors.secondary || modeColors.secondary,
-                secondaryLight: baseColors.secondaryLight || modeColors.secondaryLight,
-                secondaryDark: baseColors.secondaryDark || modeColors.secondaryDark,
-                accent: baseColors.accent || modeColors.accent,
-            };
+        if (backendTheme?.colors) {
+            return isDark 
+                ? { ...DARK_COLORS, ...backendTheme.colors }
+                : { ...LIGHT_COLORS, ...backendTheme.colors };
         }
-        
-        return {
-            ...defaultThemeConfig.colors,
-            ...baseColors
-        };
-    }, [themeConfig, isDark, isManualOverride]);
+        return isDark ? DARK_COLORS : LIGHT_COLORS;
+    }, [isDark, backendTheme]);
+
     const typography = useMemo(() => ({
-        ...defaultThemeConfig.typography,
-        ...(themeConfig.typography || {})
-    }), [themeConfig]);
+        ...DEFAULT_TYPOGRAPHY,
+        ...(backendTheme?.typography || {})
+    }), [backendTheme]);
+
     const spacing = useMemo(() => ({
-        ...defaultThemeConfig.spacing,
-        ...(themeConfig.spacing || {})
-    }), [themeConfig]);
+        ...DEFAULT_SPACING,
+        ...(backendTheme?.spacing || {})
+    }), [backendTheme]);
+
     const borderRadius = useMemo(() => ({
-        ...defaultThemeConfig.borderRadius,
-        ...(themeConfig.borderRadius || {})
-    }), [themeConfig]);
-    const shadows = useMemo(() => ({
-        ...defaultThemeConfig.shadows,
-        ...(themeConfig.shadows || {})
-    }), [themeConfig]);
+        ...DEFAULT_BORDER_RADIUS,
+        ...(backendTheme?.borderRadius || {})
+    }), [backendTheme]);
 
-    /**
-     * Load theme from backend
-     */
-    const loadThemeFromBackend = useCallback(async () => {
-        try {
-            const result = await themeService.getCurrentTheme();
+    const shadows = useMemo(() => createShadows('#000', isDark), [isDark]);
 
-            if (result.success && result.data) {
-                const backendTheme = result.data;
-
-                // Transform backend theme to frontend format with deep merge
-                const transformedTheme = {
-                    colors: { ...defaultThemeConfig.colors, ...(backendTheme.colors || {}) },
-                    typography: { ...defaultThemeConfig.typography, ...(backendTheme.typography || {}) },
-                    spacing: { ...defaultThemeConfig.spacing, ...(backendTheme.spacing || {}) },
-                    borderRadius: { ...defaultThemeConfig.borderRadius, ...(backendTheme.borderRadius || {}) },
-                    shadows: { ...defaultThemeConfig.shadows, ...(backendTheme.shadows || {}) },
-                };
-
-                // Cache the theme
-                await themeService.cacheTheme(backendTheme);
-
-                return transformedTheme;
-            }
-            return null;
-        } catch (error) {
-            // Silent fail - use cached/default theme
-
-            // Check if this is an auth error (401/403)
-            const isAuthError = error.status === 401 || error.status === 403 ||
-                (error.message && (error.message.includes('Invalid or expired token') ||
-                    error.message.includes('Authentication failed')));
-
-            // For auth errors, the API client handles logout via authFailureCallback
-            if (isAuthError) {
-                // Auth error detected - user will be logged out
-            }
-
-            return null;
-        }
-    }, []);
-
-    /**
-     * Initialize theme on app startup
-     */
     const initializeTheme = useCallback(async () => {
         try {
             setIsLoading(true);
 
-            // First, check for user's manual preference
-            const savedPreference = await AsyncStorage.getItem(THEME_PREFERENCE_KEY);
-            if (savedPreference) {
-                const { mode, config } = JSON.parse(savedPreference);
-                setThemeMode(mode);
-                setIsManualOverride(true);
-                if (config) {
-                    setThemeConfig(config);
-                    baseThemeColors.current = config.colors;
+            // 1. Check local storage first
+            const savedPref = await AsyncStorage.getItem(THEME_PREFERENCE_KEY);
+            if (savedPref) {
+                const { mode } = JSON.parse(savedPref);
+                if (mode === 'light' || mode === 'dark') {
+                    setThemeMode(mode);
+                    setIsManualOverride(true);
                 }
             } else {
-                // First, try to get cached theme for immediate display
-                const cachedTheme = await themeService.getCachedTheme();
-
-                if (cachedTheme) {
-                    const transformedTheme = {
-                        colors: { ...defaultThemeConfig.colors, ...(cachedTheme.colors || {}) },
-                        typography: { ...defaultThemeConfig.typography, ...(cachedTheme.typography || {}) },
-                        spacing: { ...defaultThemeConfig.spacing, ...(cachedTheme.spacing || {}) },
-                        borderRadius: { ...defaultThemeConfig.borderRadius, ...(cachedTheme.borderRadius || {}) },
-                        shadows: { ...defaultThemeConfig.shadows, ...(cachedTheme.shadows || {}) },
-                    };
-                    setThemeConfig(transformedTheme);
-                    baseThemeColors.current = transformedTheme.colors;
-                    setIsDynamic(true);
-
-                    // Determine theme mode from background color
-                    const bgColor = transformedTheme.colors.background;
-                    const isDarkTheme = bgColor === '#0F0F14' || bgColor === '#000000' || bgColor?.startsWith('#0');
-                    setThemeMode(isDarkTheme ? 'dark' : 'light');
-                } else {
-                    // Use system preference as fallback
+                // 2. Try to get from backend
+                try {
+                    const pref = await themeService.getThemePreference();
+                    if (pref?.mode) {
+                        setThemeMode(pref.mode);
+                    } else {
+                        // 3. Fallback to system preference
+                        const systemTheme = Appearance.getColorScheme();
+                        setThemeMode(systemTheme || 'dark');
+                    }
+                } catch {
+                    // Use system preference
                     const systemTheme = Appearance.getColorScheme();
                     setThemeMode(systemTheme || 'dark');
                 }
             }
 
-            // Then fetch from backend in background
-            const backendTheme = await loadThemeFromBackend();
-
-            if (backendTheme && !savedPreference) {
-                setThemeConfig(backendTheme);
-                baseThemeColors.current = backendTheme.colors;
-                setIsDynamic(true);
-
-                // Determine theme mode from background color
-                const bgColor = backendTheme.colors.background;
-                const isDarkTheme = bgColor === '#0F0F14' || bgColor === '#000000' || bgColor?.startsWith('#0');
-                setThemeMode(isDarkTheme ? 'dark' : 'light');
+            // 4. Load backend theme for custom colors
+            try {
+                const theme = await themeService.getCurrentTheme();
+                if (theme?.colors) {
+                    setBackendTheme(theme);
+                }
+            } catch {
+                // Backend theme is optional
             }
         } catch (error) {
-            // Silent fail
-        } finally {
-            setIsLoading(false);
-            setIsInitialized(true);
-        }
-    }, [loadThemeFromBackend]);
-
-    /**
-     * Refresh theme from backend
-     */
-    const refreshTheme = useCallback(async () => {
-        // Don't refresh if user has manual override
-        if (isManualOverride) {
-            return;
-        }
-
-        try {
-            setIsLoading(true);
-            const backendTheme = await loadThemeFromBackend();
-
-            if (backendTheme) {
-                setThemeConfig(backendTheme);
-                baseThemeColors.current = backendTheme.colors;
-                setIsDynamic(true);
-
-                const bgColor = backendTheme.colors.background;
-                const isDarkTheme = bgColor === '#0F0F14' || bgColor === '#000000' || bgColor?.startsWith('#0');
-                setThemeMode(isDarkTheme ? 'dark' : 'light');
-            }
-        } catch (error) {
-            // Silent fail
+            console.log('Theme init error:', error);
         } finally {
             setIsLoading(false);
         }
-    }, [loadThemeFromBackend, isManualOverride]);
+    }, []);
 
-    // Initial theme load
     useEffect(() => {
         initializeTheme();
     }, [initializeTheme]);
@@ -289,104 +212,59 @@ export const ThemeProvider = ({ children }) => {
     // Listen for system theme changes
     useEffect(() => {
         const subscription = Appearance.addChangeListener(({ colorScheme }) => {
-            // Only update if not using dynamic backend theme and no manual override
-            if (!isDynamic && !isManualOverride && colorScheme) {
-                setThemeMode(colorScheme);
+            if (!isManualOverride) {
+                setThemeMode(colorScheme || 'dark');
             }
         });
-
         return () => subscription.remove();
-    }, [isDynamic, isManualOverride]);
+    }, [isManualOverride]);
 
-    // Listen for app state changes to refresh theme when app comes to foreground
+    // Refresh theme when app comes to foreground
     useEffect(() => {
-        const subscription = AppState.addEventListener('change', (nextAppState) => {
-            if (nextAppState === 'active') {
-                // Refresh theme when app comes to foreground
-                refreshTheme();
+        const subscription = AppState.addEventListener('change', (state) => {
+            if (state === 'active' && !isManualOverride) {
+                themeService.getThemePreference()
+                    .then(pref => {
+                        if (pref?.mode) {
+                            setThemeMode(pref.mode);
+                        }
+                    })
+                    .catch(() => {});
             }
         });
-
         return () => subscription.remove();
-    }, [refreshTheme]);
+    }, [isManualOverride]);
 
-    // Listen for accessibility changes
-    useEffect(() => {
-        const checkAccessibility = async () => {
-            try {
-                const reducedMotion = await AccessibilityInfo.isReduceMotionEnabled();
-                setIsAccessibilityReduced(reducedMotion);
-            } catch (error) {
-                // Error checking accessibility
-            }
-        };
-
-        checkAccessibility();
-
-        const subscription = AccessibilityInfo.addEventListener(
-            'reduceMotionChanged',
-            setIsAccessibilityReduced
-        );
-
-        return () => {
-            if (subscription && subscription.remove) {
-                subscription.remove();
-            }
-        };
-    }, []);
-
-    // Toggle theme - works with both dynamic and non-dynamic themes
     const toggleTheme = useCallback(async () => {
         const newMode = themeMode === 'light' ? 'dark' : 'light';
         setThemeMode(newMode);
         setIsManualOverride(true);
 
-        // Store user's preference
-        try {
-            await AsyncStorage.setItem(THEME_PREFERENCE_KEY, JSON.stringify({
-                mode: newMode,
-                config: baseThemeColors.current ? {
-                    colors: baseThemeColors.current,
-                    typography: themeConfig.typography,
-                    spacing: themeConfig.spacing,
-                    borderRadius: themeConfig.borderRadius,
-                    shadows: themeConfig.shadows,
-                } : null
-            }));
-            // Sync with backend
-            themeService.setThemePreference(newMode).catch(() => {});
-        } catch (error) {
-            // Silent fail
-        }
-    }, [themeMode, themeConfig]);
+        // Save locally
+        await AsyncStorage.setItem(THEME_PREFERENCE_KEY, JSON.stringify({ mode: newMode }));
 
-    // Set theme mode - works with both dynamic and non-dynamic themes
+        // Sync to backend (non-blocking)
+        themeService.setThemePreference(newMode).catch(() => {});
+    }, [themeMode]);
+
     const setTheme = useCallback(async (newTheme) => {
         if (newTheme === 'light' || newTheme === 'dark') {
             setThemeMode(newTheme);
             setIsManualOverride(true);
-
-            // Store user's preference
-            try {
-                await AsyncStorage.setItem(THEME_PREFERENCE_KEY, JSON.stringify({
-                    mode: newTheme,
-                    config: baseThemeColors.current ? {
-                        colors: baseThemeColors.current,
-                        typography: themeConfig.typography,
-                        spacing: themeConfig.spacing,
-                        borderRadius: themeConfig.borderRadius,
-                        shadows: themeConfig.shadows,
-                    } : null
-                }));
-                // Sync with backend
-                themeService.setThemePreference(newTheme).catch(() => {});
-            } catch (error) {
-                // Silent fail
-            }
+            await AsyncStorage.setItem(THEME_PREFERENCE_KEY, JSON.stringify({ mode: newTheme }));
+            themeService.setThemePreference(newTheme).catch(() => {});
         }
-    }, [themeConfig]);
+    }, []);
 
-    // Context value
+    const refreshTheme = useCallback(async () => {
+        try {
+            const theme = await themeService.getCurrentTheme();
+            if (theme?.colors) {
+                setBackendTheme(theme);
+            }
+        } catch {}
+    }, []);
+
     const value = {
         theme: themeMode,
         isDark,
@@ -395,20 +273,13 @@ export const ThemeProvider = ({ children }) => {
         spacing,
         borderRadius,
         shadows,
-        themeConfig,
         isLoading,
-        isDynamic,
         isManualOverride,
-        isInitialized,
-        isAccessibilityReduced,
         toggleTheme,
         setTheme,
         refreshTheme,
     };
 
-    // Note: We no longer block rendering with `return null` during initialization
-    // The default theme is immediately available for first-time users
-    // This prevents blank/white screen while theme is loading
     return (
         <ThemeContext.Provider value={value}>
             {children}
@@ -416,41 +287,17 @@ export const ThemeProvider = ({ children }) => {
     );
 };
 
-/**
- * Custom hook to access theme context
- */
 export const useTheme = () => {
     const context = useContext(ThemeContext);
-
     if (!context) {
-        throw new Error('useTheme must be used within a ThemeProvider');
+        throw new Error('useTheme must be used within ThemeProvider');
     }
-
     return context;
 };
 
-/**
- * Hook to get colors that automatically update with theme changes
- */
 export const useColors = () => {
     const { colors } = useTheme();
     return colors;
-};
-
-/**
- * Hook to check if a feature is available based on theme capabilities
- */
-export const useThemeFeature = (feature) => {
-    const { themeConfig } = useTheme();
-
-    const features = {
-        hasGradients: !!themeConfig.colors?.primary && !!themeConfig.colors?.primaryDark,
-        hasGlassEffects: !!themeConfig.colors?.glass,
-        hasCustomTypography: !!themeConfig.typography?.fontFamily,
-        hasAnimations: true, // Could be disabled based on accessibility
-    };
-
-    return features[feature] || false;
 };
 
 export default ThemeContext;

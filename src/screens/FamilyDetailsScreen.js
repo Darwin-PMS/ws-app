@@ -56,10 +56,13 @@ const FamilyDetailsScreen = ({ navigation, route }) => {
                 text: '📍 Live Location',
                 color: colors.success
             };
-        } else if (location.last_seen) {
+        } else if (location.latitude != null && location.longitude != null) {
+            const locationText = location.address 
+                ? `Last Location: ${location.address}` 
+                : `Last Location: ${parseFloat(location.latitude).toFixed(4)}, ${parseFloat(location.longitude).toFixed(4)}`;
             return {
-                status: 'offline',
-                text: `📍 ${formatLastSeen(location.last_seen)}`,
+                status: 'last',
+                text: `📍 ${locationText}`,
                 color: colors.warning
             };
         } else if (!location.location_sharing_enabled) {
@@ -67,6 +70,12 @@ const FamilyDetailsScreen = ({ navigation, route }) => {
                 status: 'off',
                 text: '🔒 Location off',
                 color: colors.gray
+            };
+        } else if (location.last_seen) {
+            return {
+                status: 'offline',
+                text: `📍 ${formatLastSeen(location.last_seen)}`,
+                color: colors.warning
             };
         }
         return null;
@@ -84,12 +93,37 @@ const FamilyDetailsScreen = ({ navigation, route }) => {
             // Load family details by ID
             const response = await familyService.getFamilyById(familyId);
             if (response.success && response.family) {
-                setFamily(response.family);
+                const f = response.family;
+                setFamily({
+                    id: f.id,
+                    name: f.name,
+                    createdBy: f.created_by,
+                    createdAt: f.created_at,
+                    updatedAt: f.updated_at,
+                    memberCount: f.member_count,
+                    currentUserRole: f.current_user_role,
+                    currentUserId: f.current_user_id,
+                });
 
                 // Load family members
                 const membersResponse = await familyService.getFamilyMembers(familyId);
                 if (membersResponse.success) {
-                    setMembers(membersResponse.members || []);
+                    console.log('Family Members:', membersResponse);
+                    const transformedMembers = (membersResponse.members || []).map(m => ({
+                        id: m.id,
+                        userId: m.user_id,
+                        firstName: m.first_name,
+                        lastName: m.last_name,
+                        email: m.email,
+                        phone: m.phone,
+                        role: m.role,
+                        nickname: m.nickname,
+                        joinedAt: m.joined_at,
+                        familyId: m.family_id,
+                        userRole: m.user_role,
+                        isOnline: m.is_online || false,
+                    }));
+                    setMembers(transformedMembers);
                 }
 
                 // Load family member locations

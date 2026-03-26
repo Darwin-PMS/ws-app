@@ -65,5 +65,5 @@ class MobileApiService {
 }
 
 export const mobileApi = new MobileApiService();
-export { ENDPOINTS, API_CONFIG };
+export { apiClient, ENDPOINTS, API_CONFIG };
 export default mobileApi;

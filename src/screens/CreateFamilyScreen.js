@@ -29,8 +29,14 @@ const CreateFamilyScreen = ({ navigation }) => {
             return;
         }
 
+        if (!userId) {
+            Alert.alert('Error', 'User session not found. Please log in again.');
+            return;
+        }
+
         setIsLoading(true);
         try {
+            console.log('Creating family with:', { name: familyName.trim(), createdBy: userId });
             const response = await familyService.createFamily({
                 name: familyName.trim(),
                 createdBy: userId,
@@ -46,7 +52,8 @@ const CreateFamilyScreen = ({ navigation }) => {
                 Alert.alert('Error', response.message || 'Failed to create family');
             }
         } catch (error) {
-            Alert.alert('Error', error.message || 'An error occurred');
+            console.error('Create family error:', error);
+            Alert.alert('Error', error.data?.message || error.message || 'An error occurred');
         } finally {
             setIsLoading(false);
         }

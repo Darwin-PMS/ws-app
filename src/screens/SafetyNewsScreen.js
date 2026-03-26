@@ -1,7 +1,4 @@
-// Safety News Screen
-// List view of news with category filter and featured news section
-
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
     View,
     Text,
@@ -11,7 +8,8 @@ import {
     RefreshControl,
     TextInput,
     Image,
-    Dimensions,
+    Animated,
+    ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
@@ -19,11 +17,16 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
 import safetyNewsService from '../services/safetyNewsService';
 
-const { width } = Dimensions.get('window');
+const CATEGORY_COLORS = {
+    'safety-tips': { color: '#10B981', bg: '#ECFDF5' },
+    'legal-rights': { color: '#3B82F6', bg: '#EFF6FF' },
+    'emergency': { color: '#EF4444', bg: '#FEF2F2' },
+    'awareness': { color: '#8B5CF6', bg: '#F5F3FF' },
+    default: { color: '#6366F1', bg: '#EEF2FF' },
+};
 
 const SafetyNewsScreen = ({ navigation }) => {
     const { colors, spacing, borderRadius, shadows } = useTheme();
-
     const [news, setNews] = useState([]);
     const [featuredNews, setFeaturedNews] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -31,8 +34,10 @@ const SafetyNewsScreen = ({ navigation }) => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [showSearch, setShowSearch] = useState(false);
+    const [viewMode, setViewMode] = useState('list');
+    const searchAnim = useState(new Animated.Value(0))[0];
 
-    // Load news and categories
     const loadData = useCallback(async () => {
         try {
             const [newsResponse, categoriesResponse, featuredResponse] = await Promise.all([
@@ -40,16 +45,9 @@ const SafetyNewsScreen = ({ navigation }) => {
                 safetyNewsService.getCategories(),
                 safetyNewsService.getFeaturedNews(),
             ]);
-
-            if (newsResponse.success) {
-                setNews(newsResponse.data || []);
-            }
-            if (categoriesResponse.success) {
-                setCategories(categoriesResponse.data || []);
-            }
-            if (featuredResponse.success) {
-                setFeaturedNews(featuredResponse.data || []);
-            }
+            if (newsResponse.success) setNews(newsResponse.data || []);
+            if (categoriesResponse.success) setCategories(categoriesResponse.data || []);
+            if (featuredResponse.success) setFeaturedNews(featuredResponse.data || []);
         } catch (error) {
             console.error('Error loading news:', error);
         } finally {
@@ -58,455 +56,408 @@ const SafetyNewsScreen = ({ navigation }) => {
         }
     }, [selectedCategory]);
 
-    useEffect(() => {
-        loadData();
-    }, [loadData]);
+    useEffect(() => { loadData(); }, [loadData]);
 
-    // Handle refresh
-    const handleRefresh = () => {
-        setRefreshing(true);
-        loadData();
+    const handleRefresh = () => { setRefreshing(true); loadData(); };
+
+    const toggleSearch = () => {
+        Animated.timing(searchAnim, {
+            toValue: showSearch ? 0 : 1,
+            duration: 250,
+            useNativeDriver: false,
+        }).start();
+        setShowSearch(!showSearch);
+        if (showSearch) setSearchQuery('');
     };
 
-    // Format date
+    const toggleViewMode = () => {
+        setViewMode(prev => prev === 'list' ? 'grid' : 'list');
+    };
+
+    const filteredNews = useMemo(() => {
+        if (!searchQuery) return news;
+        const query = searchQuery.toLowerCase();
+        return news.filter(n =>
+            n.title?.toLowerCase().includes(query) ||
+            n.summary?.toLowerCase().includes(query) ||
+            n.category?.toLowerCase().includes(query)
+        );
+    }, [news, searchQuery]);
+
+    const getCategoryConfig = (category) => {
+        const key = category?.toLowerCase().replace(/\s+/g, '-') || 'default';
+        return CATEGORY_COLORS[key] || CATEGORY_COLORS.default;
+    };
+
     const formatDate = (dateString) => {
         if (!dateString) return '';
         const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-        });
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     };
 
-    // Filter news by search query
-    const filteredNews = news.filter(item => {
-        if (!searchQuery) return true;
-        const query = searchQuery.toLowerCase();
-        return (
-            item.title?.toLowerCase().includes(query) ||
-            item.summary?.toLowerCase().includes(query)
-        );
-    });
+    const getTimeAgo = (dateString) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        const now = new Date();
+        const diff = Math.floor((now - date) / (1000 * 60 * 60));
+        if (diff < 1) return 'Just now';
+        if (diff < 24) return `${diff}h ago`;
+        const days = Math.floor(diff / 24);
+        return `${days}d ago`;
+    };
 
-    // Render featured news item
-    const renderFeaturedNews = ({ item }) => (
-        <TouchableOpacity
-            style={styles.featuredCard}
-            onPress={() => navigation.navigate('SafetyNewsDetail', { newsId: item.id })}
-            activeOpacity={0.8}
-        >
-            {item.image ? (
-                <Image
-                    source={{ uri: item.image }}
-                    style={styles.featuredImage}
-                    resizeMode="cover"
-                />
-            ) : (
-                <View style={[styles.featuredImagePlaceholder, { backgroundColor: colors.primary + '30' }]}>
-                    <Ionicons name="newspaper" size={48} color={colors.primary} />
-                </View>
-            )}
-            <View style={[styles.featuredOverlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
-                {item.category && (
-                    <View style={[styles.featuredBadge, { backgroundColor: colors.primary }]}>
-                        <Text style={styles.featuredBadgeText}>{item.category}</Text>
+    const renderCategoryChip = (category, isSelected) => {
+        const config = getCategoryConfig(category);
+        const label = category === null ? 'All' : category;
+        
+        return (
+            <TouchableOpacity
+                key={label}
+                style={[
+                    styles.categoryChip,
+                    {
+                        backgroundColor: isSelected ? config.color : config.bg,
+                        borderColor: isSelected ? config.color : 'transparent',
+                    }
+                ]}
+                onPress={() => setSelectedCategory(category === selectedCategory ? null : category)}
+                activeOpacity={0.7}
+            >
+                <Text style={[styles.categoryChipText, { color: isSelected ? '#fff' : config.color }]}>
+                    {label}
+                </Text>
+            </TouchableOpacity>
+        );
+    };
+
+    const renderListItem = ({ item }) => {
+        const config = getCategoryConfig(item.category);
+        const isFeatured = item.isFeatured;
+
+        return (
+            <TouchableOpacity
+                style={[styles.listCard, { backgroundColor: colors.card, borderRadius: borderRadius.xl, ...shadows.sm }]}
+                onPress={() => navigation.navigate('SafetyNewsDetail', { newsId: item.id })}
+                activeOpacity={0.85}
+            >
+                {item.imageUrl ? (
+                    <Image source={{ uri: item.imageUrl }} style={[styles.listImage, { borderTopLeftRadius: borderRadius.xl, borderBottomLeftRadius: borderRadius.xl }]} />
+                ) : (
+                    <View style={[styles.listImagePlaceholder, { backgroundColor: config.bg, borderTopLeftRadius: borderRadius.xl, borderBottomLeftRadius: borderRadius.xl }]}>
+                        <Ionicons name="newspaper-outline" size={28} color={config.color} />
                     </View>
                 )}
-                <Text style={styles.featuredTitle} numberOfLines={2}>
-                    {item.title}
-                </Text>
-                <View style={styles.featuredMeta}>
-                    {item.author && (
-                        <Text style={styles.featuredAuthor} numberOfLines={1}>
-                            By {item.author}
-                        </Text>
-                    )}
-                    {item.published_date && (
-                        <Text style={styles.featuredDate}>
-                            {formatDate(item.published_date)}
-                        </Text>
-                    )}
-                </View>
-            </View>
-        </TouchableOpacity>
-    );
-
-    // Render news item
-    const renderNewsItem = ({ item }) => (
-        <TouchableOpacity
-            style={[
-                styles.newsCard,
-                { backgroundColor: colors.card, borderRadius, ...shadows.small }
-            ]}
-            onPress={() => navigation.navigate('SafetyNewsDetail', { newsId: item.id })}
-            activeOpacity={0.7}
-        >
-            {item.image ? (
-                <Image
-                    source={{ uri: item.image }}
-                    style={styles.newsImage}
-                    resizeMode="cover"
-                />
-            ) : (
-                <View style={[styles.newsImagePlaceholder, { backgroundColor: colors.primary + '20' }]}>
-                    <Ionicons name="newspaper" size={32} color={colors.primary} />
-                </View>
-            )}
-
-            <View style={styles.newsContent}>
-                <View style={styles.newsHeader}>
-                    {item.category && (
-                        <View style={[styles.categoryBadge, { backgroundColor: colors.primary + '20' }]}>
-                            <Text style={[styles.categoryText, { color: colors.primary }]}>
+                
+                <View style={styles.listContent}>
+                    <View style={styles.listHeader}>
+                        <View style={[styles.categoryBadge, { backgroundColor: config.bg }]}>
+                            <Text style={[styles.categoryBadgeText, { color: config.color }]}>
                                 {item.category}
                             </Text>
                         </View>
-                    )}
-                    {item.featured && (
-                        <Ionicons name="star" size={16} color={colors.warning} />
-                    )}
-                </View>
-
-                <Text style={[styles.newsTitle, { color: colors.text }]} numberOfLines={2}>
-                    {item.title}
-                </Text>
-
-                <Text style={[styles.newsSummary, { color: colors.textSecondary }]} numberOfLines={2}>
-                    {item.summary}
-                </Text>
-
-                <View style={styles.newsFooter}>
-                    <View style={styles.newsMeta}>
-                        {item.author && (
-                            <Text style={[styles.newsAuthor, { color: colors.textMuted }]} numberOfLines={1}>
-                                {item.author}
-                            </Text>
+                        {isFeatured && (
+                            <View style={[styles.featuredBadge, { backgroundColor: colors.warning }]}>
+                                <Ionicons name="star" size={10} color="#fff" />
+                            </View>
                         )}
-                        {item.published_date && (
-                            <Text style={[styles.newsDate, { color: colors.textMuted }]}>
-                                {formatDate(item.published_date)}
+                    </View>
+
+                    <Text style={[styles.newsTitle, { color: colors.text }]} numberOfLines={2}>
+                        {item.title}
+                    </Text>
+
+                    {item.summary && (
+                        <Text style={[styles.newsSummary, { color: colors.textSecondary }]} numberOfLines={2}>
+                            {item.summary}
+                        </Text>
+                    )}
+
+                    <View style={styles.listFooter}>
+                        <View style={styles.newsMeta}>
+                            {item.author && (
+                                <Text style={[styles.authorText, { color: colors.textTertiary }]} numberOfLines={1}>
+                                    {item.author}
+                                </Text>
+                            )}
+                            <Text style={[styles.dateText, { color: colors.textTertiary }]}>
+                                {formatDate(item.publishedAt)}
                             </Text>
+                        </View>
+                        {item.viewsCount > 0 && (
+                            <View style={styles.viewsContainer}>
+                                <Ionicons name="eye-outline" size={12} color={colors.textTertiary} />
+                                <Text style={[styles.viewsText, { color: colors.textTertiary }]}>{item.viewsCount}</Text>
+                            </View>
                         )}
                     </View>
                 </View>
-            </View>
-        </TouchableOpacity>
-    );
+            </TouchableOpacity>
+        );
+    };
 
-    // Render category filter
-    const renderCategoryFilter = () => (
-        <View style={styles.filterContainer}>
-            <FlatList
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                data={[{ id: null, name: 'All' }, ...categories]}
-                keyExtractor={(item) => item.id?.toString() || 'all'}
-                contentContainerStyle={styles.categoryList}
-                renderItem={({ item }) => (
-                    <TouchableOpacity
-                        style={[
-                            styles.categoryChip,
-                            {
-                                backgroundColor: selectedCategory === item.id ? colors.primary : colors.surface,
-                                borderColor: selectedCategory === item.id ? colors.primary : colors.border,
-                            }
-                        ]}
-                        onPress={() => setSelectedCategory(item.id)}
-                    >
-                        <Text
-                            style={[
-                                styles.categoryChipText,
-                                { color: selectedCategory === item.id ? colors.white : colors.text }
-                            ]}
-                        >
-                            {item.name}
-                        </Text>
-                    </TouchableOpacity>
+    const renderGridItem = ({ item }) => {
+        const config = getCategoryConfig(item.category);
+
+        return (
+            <TouchableOpacity
+                style={[styles.gridCard, { backgroundColor: colors.card, borderRadius: borderRadius.xl, ...shadows.sm }]}
+                onPress={() => navigation.navigate('SafetyNewsDetail', { newsId: item.id })}
+                activeOpacity={0.85}
+            >
+                {item.imageUrl ? (
+                    <Image source={{ uri: item.imageUrl }} style={[styles.gridImage, { borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl }]} />
+                ) : (
+                    <View style={[styles.gridImagePlaceholder, { backgroundColor: config.bg, borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl }]}>
+                        <Ionicons name="newspaper-outline" size={32} color={config.color} />
+                    </View>
                 )}
-            />
-        </View>
-    );
 
-    if (loading) {
-        return <LoadingSpinner fullScreen message="Loading news..." />;
-    }
+                <View style={styles.gridContent}>
+                    <View style={[styles.gridCategoryBadge, { backgroundColor: config.bg }]}>
+                        <Text style={[styles.gridCategoryText, { color: config.color }]}>
+                            {item.category}
+                        </Text>
+                    </View>
+
+                    <Text style={[styles.gridTitle, { color: colors.text }]} numberOfLines={2}>
+                        {item.title}
+                    </Text>
+
+                    {item.summary && (
+                        <Text style={[styles.gridSummary, { color: colors.textSecondary }]} numberOfLines={2}>
+                            {item.summary}
+                        </Text>
+                    )}
+
+                    <View style={styles.gridFooter}>
+                        <Text style={[styles.gridDate, { color: colors.textTertiary }]}>
+                            {getTimeAgo(item.publishedAt)}
+                        </Text>
+                        {item.viewsCount > 0 && (
+                            <View style={styles.gridViews}>
+                                <Ionicons name="eye-outline" size={12} color={colors.textTertiary} />
+                                <Text style={[styles.viewsText, { color: colors.textTertiary }]}>{item.viewsCount}</Text>
+                            </View>
+                        )}
+                    </View>
+                </View>
+            </TouchableOpacity>
+        );
+    };
+
+    const renderFeaturedSection = () => {
+        if (featuredNews.length === 0 || selectedCategory || searchQuery) return null;
+
+        return (
+            <View style={styles.featuredSection}>
+                <View style={styles.sectionHeader}>
+                    <View style={styles.sectionTitleRow}>
+                        <Ionicons name="star" size={18} color={colors.warning} />
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>Featured</Text>
+                    </View>
+                </View>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.featuredScroll}
+                >
+                    {featuredNews.slice(0, 5).map((item, index) => {
+                        const config = getCategoryConfig(item.category);
+                        return (
+                            <TouchableOpacity
+                                key={item.id}
+                                style={[styles.featuredCard, { backgroundColor: colors.card, ...shadows.md }]}
+                                onPress={() => navigation.navigate('SafetyNewsDetail', { newsId: item.id })}
+                                activeOpacity={0.85}
+                            >
+                {item.imageUrl ? (
+                    <Image source={{ uri: item.imageUrl }} style={styles.featuredImage} />
+                ) : (
+                    <View style={[styles.featuredImagePlaceholder, { backgroundColor: config.bg }]}>
+                        <Ionicons name="newspaper-outline" size={40} color={config.color} />
+                    </View>
+                )}
+                                <View style={styles.featuredOverlay}>
+                                    <View style={[styles.featuredCategory, { backgroundColor: config.color }]}>
+                                        <Text style={styles.featuredCategoryText}>{item.category}</Text>
+                                    </View>
+                                </View>
+                                <View style={styles.featuredContent}>
+                                    <Text style={styles.featuredTitle} numberOfLines={2}>{item.title}</Text>
+                                    <Text style={styles.featuredMeta}>
+                                        {item.author && `By ${item.author} • `}{getTimeAgo(item.publishedAt)}
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </ScrollView>
+            </View>
+        );
+    };
+
+    if (loading) return <LoadingSpinner fullScreen message="Loading news..." />;
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
-            {/* Header */}
             <View style={[styles.header, { backgroundColor: colors.secondary }]}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                    <Ionicons name="arrow-back" size={24} color={colors.white} />
-                </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: colors.white }]}>
-                    Safety News
-                </Text>
-                <Text style={[styles.headerSubtitle, { color: colors.white + 'CC' }]}>
-                    Stay informed and safe
-                </Text>
-            </View>
-
-            {/* Search Bar */}
-            <View style={styles.searchContainer}>
-                <View style={[styles.searchBar, { backgroundColor: colors.surface, borderRadius }]}>
-                    <Ionicons name="search" size={20} color={colors.textSecondary} />
-                    <TextInput
-                        style={[styles.searchInput, { color: colors.text }]}
-                        placeholder="Search news..."
-                        placeholderTextColor={colors.textSecondary}
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                    />
-                    {searchQuery ? (
-                        <TouchableOpacity onPress={() => setSearchQuery('')}>
-                            <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
-                        </TouchableOpacity>
-                    ) : null}
+                <View style={styles.headerTop}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn}>
+                        <Ionicons name="arrow-back" size={24} color="#fff" />
+                    </TouchableOpacity>
+                    <View style={styles.headerTitle}>
+                        <Text style={styles.headerTitleText}>Safety News</Text>
+                        <Text style={styles.headerSubtitleText}>{news.length} articles</Text>
+                    </View>
+                    <TouchableOpacity onPress={toggleViewMode} style={styles.headerBtn}>
+                        <Ionicons name={viewMode === 'list' ? 'grid-outline' : 'list-outline'} size={22} color="#fff" />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={toggleSearch} style={styles.headerBtn}>
+                        <Ionicons name={showSearch ? 'close' : 'search'} size={22} color="#fff" />
+                    </TouchableOpacity>
                 </View>
+
+                <Animated.View style={[
+                    styles.searchContainer,
+                    {
+                        height: searchAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 48] }),
+                        opacity: searchAnim,
+                    }
+                ]}>
+                    <View style={[styles.searchBar, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                        <Ionicons name="search" size={20} color="#fff" />
+                        <TextInput
+                            style={styles.searchInput}
+                            placeholder="Search news..."
+                            placeholderTextColor="rgba(255,255,255,0.7)"
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                            autoFocus
+                        />
+                        {searchQuery ? (
+                            <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                <Ionicons name="close-circle" size={20} color="#fff" />
+                            </TouchableOpacity>
+                        ) : null}
+                    </View>
+                </Animated.View>
             </View>
 
-            {/* Category Filter */}
-            {renderCategoryFilter()}
+            <View style={styles.content}>
+                <View style={styles.categoryScrollContainer}>
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.categoryScroll}
+                    >
+                        {renderCategoryChip(null, selectedCategory === null)}
+                        {categories.map(cat => renderCategoryChip(cat, selectedCategory === cat))}
+                    </ScrollView>
+                </View>
 
-            {/* News List */}
-            {filteredNews.length > 0 || featuredNews.length > 0 ? (
-                <FlatList
-                    data={filteredNews}
-                    renderItem={renderNewsItem}
-                    keyExtractor={(item) => item.id.toString()}
-                    showsVerticalScrollIndicator={false}
-                    ListHeaderComponent={
-                        featuredNews.length > 0 && !selectedCategory && !searchQuery ? (
-                            <View style={styles.featuredSection}>
-                                <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                                    Featured
-                                </Text>
-                                <FlatList
-                                    horizontal
-                                    data={featuredNews}
-                                    renderItem={renderFeaturedNews}
-                                    keyExtractor={(item) => `featured-${item.id}`}
-                                    showsHorizontalScrollIndicator={false}
-                                    contentContainerStyle={styles.featuredList}
-                                />
-                            </View>
-                        ) : null
-                    }
-                    ListHeaderComponentStyle={{ marginBottom: 8 }}
-                    contentContainerStyle={styles.listContent}
-                    refreshControl={
-                        <RefreshControl
-                            refreshing={refreshing}
-                            onRefresh={handleRefresh}
-                            colors={[colors.primary]}
-                            tintColor={colors.primary}
+                {filteredNews.length > 0 ? (
+                    viewMode === 'list' ? (
+                        <FlatList
+                            data={filteredNews}
+                            renderItem={renderListItem}
+                            keyExtractor={(item) => item.id.toString()}
+                            contentContainerStyle={styles.listContainer}
+                            showsVerticalScrollIndicator={false}
+                            ListHeaderComponent={renderFeaturedSection}
+                            refreshControl={
+                                <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.secondary]} tintColor={colors.secondary} />
+                            }
                         />
-                    }
-                />
-            ) : (
-                <EmptyState
-                    icon="newspaper-outline"
-                    title="No News Found"
-                    message="There are no news articles available in this category."
-                    actionLabel="Clear Filter"
-                    onAction={() => {
-                        setSelectedCategory(null);
-                        setSearchQuery('');
-                    }}
-                />
-            )}
+                    ) : (
+                        <FlatList
+                            data={filteredNews}
+                            renderItem={renderGridItem}
+                            keyExtractor={(item) => item.id.toString()}
+                            numColumns={2}
+                            columnWrapperStyle={styles.gridRow}
+                            contentContainerStyle={styles.gridContainer}
+                            showsVerticalScrollIndicator={false}
+                            refreshControl={
+                                <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.secondary]} tintColor={colors.secondary} />
+                            }
+                        />
+                    )
+                ) : (
+                    <EmptyState
+                        icon="newspaper-outline"
+                        title="No News Found"
+                        message={searchQuery ? `No articles match "${searchQuery}"` : "There are no news articles available."}
+                        actionLabel="Clear Filters"
+                        onAction={() => { setSelectedCategory(null); setSearchQuery(''); }}
+                    />
+                )}
+            </View>
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    backBtn: {
-        position: 'absolute',
-        top: 48,
-        left: 16,
-        zIndex: 10,
-        padding: 8,
-    },
-    header: {
-        padding: 24,
-        paddingTop: 48,
-        borderBottomLeftRadius: 24,
-        borderBottomRightRadius: 24,
-    },
-    headerTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-    },
-    headerSubtitle: {
-        fontSize: 14,
-        marginTop: 4,
-    },
-    searchContainer: {
-        paddingHorizontal: 16,
-        paddingTop: 16,
-    },
-    searchBar: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        gap: 8,
-    },
-    searchInput: {
-        flex: 1,
-        fontSize: 16,
-    },
-    filterContainer: {
-        paddingTop: 12,
-    },
-    categoryList: {
-        paddingHorizontal: 16,
-    },
+    container: { flex: 1 },
+    header: { paddingTop: 50, paddingBottom: 16, paddingHorizontal: 16 },
+    headerTop: { flexDirection: 'row', alignItems: 'center' },
+    headerBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+    headerTitle: { flex: 1, marginLeft: 4 },
+    headerTitleText: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
+    headerSubtitleText: { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+    searchContainer: { overflow: 'hidden', marginTop: 12 },
+    searchBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, gap: 10 },
+    searchInput: { flex: 1, fontSize: 16, color: '#fff' },
+    content: { flex: 1 },
+    categoryScrollContainer: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
+    categoryScroll: { paddingHorizontal: 16, gap: 8 },
     categoryChip: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-        borderWidth: 1,
-        marginRight: 8,
+        paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, gap: 6,
     },
-    categoryChipText: {
-        fontSize: 14,
-        fontWeight: '500',
-    },
-    listContent: {
-        padding: 16,
-        paddingBottom: 32,
-    },
-    featuredSection: {
-        marginBottom: 16,
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        marginBottom: 12,
-    },
-    featuredList: {
-        paddingRight: 16,
-    },
-    featuredCard: {
-        width: width * 0.75,
-        height: 200,
-        marginRight: 12,
-        borderRadius: 16,
-        overflow: 'hidden',
-    },
-    featuredImage: {
-        width: '100%',
-        height: '100%',
-    },
-    featuredImagePlaceholder: {
-        width: '100%',
-        height: '100%',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    featuredOverlay: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        padding: 12,
-    },
-    featuredBadge: {
-        alignSelf: 'flex-start',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
-        marginBottom: 8,
-    },
-    featuredBadgeText: {
-        color: '#fff',
-        fontSize: 12,
-        fontWeight: '500',
-    },
-    featuredTitle: {
-        color: '#fff',
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 4,
-    },
-    featuredMeta: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    featuredAuthor: {
-        color: '#fff',
-        fontSize: 12,
-        flex: 1,
-    },
-    featuredDate: {
-        color: '#fff',
-        fontSize: 12,
-    },
-    newsCard: {
-        flexDirection: 'row',
-        marginBottom: 12,
-        overflow: 'hidden',
-    },
-    newsImage: {
-        width: 120,
-        height: 120,
-    },
-    newsImagePlaceholder: {
-        width: 120,
-        height: 120,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    newsContent: {
-        flex: 1,
-        padding: 12,
-    },
-    newsHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 6,
-    },
-    categoryBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 10,
-    },
-    categoryText: {
-        fontSize: 11,
-        fontWeight: '500',
-    },
-    newsTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        marginBottom: 4,
-    },
-    newsSummary: {
-        fontSize: 13,
-        lineHeight: 18,
-        marginBottom: 8,
-    },
-    newsFooter: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    newsMeta: {
-        flex: 1,
-    },
-    newsAuthor: {
-        fontSize: 12,
-        marginBottom: 2,
-    },
-    newsDate: {
-        fontSize: 11,
-    },
+    categoryChipText: { fontSize: 13, fontWeight: '600', textTransform: 'capitalize' },
+    featuredSection: { paddingVertical: 16 },
+    sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 12 },
+    sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    sectionTitle: { fontSize: 16, fontWeight: '700' },
+    featuredScroll: { paddingHorizontal: 16, gap: 12 },
+    featuredCard: { width: 260, borderRadius: 16, overflow: 'hidden' },
+    featuredImage: { width: '100%', height: 140 },
+    featuredImagePlaceholder: { width: '100%', height: 140, justifyContent: 'center', alignItems: 'center' },
+    featuredOverlay: { position: 'absolute', top: 8, left: 8 },
+    featuredCategory: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+    featuredCategoryText: { color: '#fff', fontSize: 10, fontWeight: '600', textTransform: 'capitalize' },
+    featuredContent: { padding: 12 },
+    featuredTitle: { fontSize: 14, fontWeight: '700', color: '#333', lineHeight: 20, marginBottom: 4 },
+    featuredMeta: { fontSize: 11, color: '#666' },
+    listContainer: { padding: 16, paddingBottom: 100 },
+    listCard: { flexDirection: 'row', marginBottom: 12, overflow: 'hidden' },
+    listImage: { width: 100, height: 120 },
+    listImagePlaceholder: { width: 100, height: 120, justifyContent: 'center', alignItems: 'center' },
+    listContent: { flex: 1, padding: 14 },
+    listHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+    categoryBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+    categoryBadgeText: { fontSize: 10, fontWeight: '600', textTransform: 'capitalize' },
+    featuredBadge: { width: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+    newsTitle: { fontSize: 15, fontWeight: '700', lineHeight: 21, marginBottom: 4 },
+    newsSummary: { fontSize: 12, lineHeight: 17, marginBottom: 8 },
+    listFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' },
+    newsMeta: { flex: 1 },
+    authorText: { fontSize: 10, marginBottom: 2 },
+    dateText: { fontSize: 10 },
+    viewsContainer: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    viewsText: { fontSize: 10 },
+    gridContainer: { padding: 12, paddingBottom: 100 },
+    gridRow: { gap: 12 },
+    gridCard: { flex: 1, maxWidth: '48%', marginBottom: 12 },
+    gridImage: { width: '100%', height: 100 },
+    gridImagePlaceholder: { width: '100%', height: 100, justifyContent: 'center', alignItems: 'center' },
+    gridContent: { padding: 12 },
+    gridCategoryBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, marginBottom: 8 },
+    gridCategoryText: { fontSize: 9, fontWeight: '600', textTransform: 'capitalize' },
+    gridTitle: { fontSize: 13, fontWeight: '700', lineHeight: 18, marginBottom: 4 },
+    gridSummary: { fontSize: 11, lineHeight: 15, marginBottom: 8 },
+    gridFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    gridDate: { fontSize: 10 },
+    gridViews: { flexDirection: 'row', alignItems: 'center', gap: 4 },
 });
 
 export default SafetyNewsScreen;

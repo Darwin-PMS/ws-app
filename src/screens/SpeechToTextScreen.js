@@ -1,19 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    ScrollView,
-    Alert,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-audio';
+import { Audio } from 'expo-av';
 import { useTheme } from '../context/ThemeContext';
 
-const SpeechToTextScreen = () => {
-    const { colors, spacing, borderRadius, shadows } = useTheme();
+const { width } = Dimensions.get('window');
 
+const SpeechToTextScreen = ({ navigation }) => {
+    const { colors, shadows } = useTheme();
     const [recording, setRecording] = useState(null);
     const [transcription, setTranscription] = useState('');
     const [isRecording, setIsRecording] = useState(false);
@@ -24,204 +18,134 @@ const SpeechToTextScreen = () => {
     }, []);
 
     const checkPermission = async () => {
-        const { status } = await Audio.requestPermissionsAsync();
-        setHasPermission(status === 'granted');
+        try {
+            const { status } = await Audio.requestPermissionsAsync();
+            setHasPermission(status === 'granted');
+        } catch (error) {
+            console.log('Permission error:', error);
+        }
     };
 
     const startRecording = async () => {
-        if (!hasPermission) {
-            Alert.alert('Permission Required', 'Microphone access is needed');
-            return;
-        }
-
+        if (!hasPermission) { Alert.alert('Permission Required', 'Microphone access is needed'); return; }
         try {
-            await Audio.setAudioModeAsync({
-                allowsRecordingIOS: true,
-                playsInSilentModeIOS: true,
-            });
-
-            const { recording } = await Audio.Recording.createAsync(
-                Audio.RecordingOptionsPresets.HIGH_QUALITY
-            );
-
+            await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
+            const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
             setRecording(recording);
             setIsRecording(true);
-        } catch (error) {
-            console.error('Failed to start recording:', error);
-        }
+        } catch (error) { console.error('Failed to start recording:', error); }
     };
 
     const stopRecording = async () => {
         if (!recording) return;
-
         setIsRecording(false);
         await recording.stopAndUnloadAsync();
-        const uri = recording.getURI();
         setRecording(null);
-
-        // In a real app, you would send the audio to a speech-to-text service
         setTranscription('This is a simulated transcription. In production, this would be the actual transcribed text from your speech.');
     };
 
-    const clearTranscription = () => {
-        setTranscription('');
-    };
-
-    const copyTranscription = () => {
-        // Clipboard functionality
-    };
+    const features = [
+        { icon: 'mic', label: 'Voice Recognition', desc: 'Powered by AI' },
+        { icon: 'language', label: 'Multi-language', desc: 'Supports 50+ languages' },
+        { icon: 'speedometer', label: 'Real-time', desc: 'Fast transcription' },
+    ];
 
     return (
-        <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-            <View style={[styles.header, { backgroundColor: colors.primary }]}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                    <Ionicons name="arrow-back" size={24} color={colors.white} />
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
+            <View style={[styles.header, { backgroundColor: '#10B981' }]}>
+                <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+                    <Ionicons name="arrow-back" size={24} color="#fff" />
                 </TouchableOpacity>
-                <Ionicons name="mic" size={40} color={colors.white} />
-                <Text style={[styles.headerTitle, { color: colors.white }]}>Speech to Text</Text>
-                <Text style={[styles.headerSubtitle, { color: colors.white + 'CC' }]}>
-                    Convert your speech to text
-                </Text>
+                <View style={styles.headerContent}>
+                    <View style={[styles.headerIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                        <Ionicons name="mic" size={36} color="#fff" />
+                    </View>
+                    <Text style={styles.headerTitle}>Speech to Text</Text>
+                    <Text style={styles.headerSubtitle}>Convert your voice to text instantly</Text>
+                </View>
             </View>
 
-            <View style={styles.content}>
-                <View style={styles.recordContainer}>
-                    <TouchableOpacity
-                        style={[
-                            styles.recordButton,
-                            {
-                                backgroundColor: isRecording ? colors.error : colors.primary,
-                                ...shadows.large,
-                            },
-                        ]}
-                        onPress={isRecording ? stopRecording : startRecording}
-                    >
-                        <Ionicons
-                            name={isRecording ? 'stop' : 'mic'}
-                            size={40}
-                            color={colors.white}
-                        />
-                    </TouchableOpacity>
-                    <Text style={[styles.recordText, { color: colors.text }]}>
-                        {isRecording ? 'Tap to Stop' : 'Tap to Record'}
-                    </Text>
+            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+                <View style={styles.featuresGrid}>
+                    {features.map((feat, i) => (
+                        <View key={i} style={[styles.featureCard, { backgroundColor: colors.card, ...shadows.sm }]}>
+                            <View style={[styles.featureIcon, { backgroundColor: '#10B98120' }]}>
+                                <Ionicons name={feat.icon} size={22} color="#10B981" />
+                            </View>
+                            <Text style={[styles.featureLabel, { color: colors.text }]}>{feat.label}</Text>
+                            <Text style={[styles.featureDesc, { color: colors.gray }]}>{feat.desc}</Text>
+                        </View>
+                    ))}
                 </View>
 
-                {isRecording && (
-                    <View style={styles.waveformContainer}>
-                        <View style={[styles.waveformBar, { backgroundColor: colors.primary, height: 20 }]} />
-                        <View style={[styles.waveformBar, { backgroundColor: colors.primary, height: 40 }]} />
-                        <View style={[styles.waveformBar, { backgroundColor: colors.primary, height: 30 }]} />
-                        <View style={[styles.waveformBar, { backgroundColor: colors.primary, height: 50 }]} />
-                        <View style={[styles.waveformBar, { backgroundColor: colors.primary, height: 25 }]} />
-                        <View style={[styles.waveformBar, { backgroundColor: colors.primary, height: 45 }]} />
-                        <View style={[styles.waveformBar, { backgroundColor: colors.primary, height: 35 }]} />
+                <TouchableOpacity
+                    style={[styles.recordBtn, { backgroundColor: isRecording ? '#EF4444' : '#10B981' }]}
+                    onPress={isRecording ? stopRecording : startRecording}
+                >
+                    <View style={[styles.recordIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                        <Ionicons name={isRecording ? 'stop' : 'mic'} size={40} color="#fff" />
+                    </View>
+                    <Text style={styles.recordLabel}>{isRecording ? 'Tap to Stop' : 'Tap to Record'}</Text>
+                    {isRecording && <View style={styles.recordingIndicator}><View style={styles.recordingDot} /><Text style={styles.recordingText}>Recording...</Text></View>}
+                </TouchableOpacity>
+
+                {transcription && (
+                    <View style={[styles.resultCard, { backgroundColor: colors.card, ...shadows.md }]}>
+                        <View style={styles.resultHeader}>
+                            <View style={[styles.resultIcon, { backgroundColor: '#10B98120' }]}>
+                                <Ionicons name="checkmark-circle" size={22} color="#10B981" />
+                            </View>
+                            <Text style={[styles.resultTitle, { color: colors.text }]}>Transcription</Text>
+                        </View>
+                        <Text style={[styles.resultText, { color: colors.gray }]}>{transcription}</Text>
+                        <View style={styles.resultActions}>
+                            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.primary + '15' }]}>
+                                <Ionicons name="copy-outline" size={20} color={colors.primary} />
+                                <Text style={[styles.actionLabel, { color: colors.primary }]}>Copy</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#EF444415' }]}>
+                                <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                                <Text style={[styles.actionLabel, { color: '#EF4444' }]}>Clear</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 )}
 
-                {transcription ? (
-                    <View style={[styles.transcriptionContainer, { backgroundColor: colors.card, borderRadius, ...shadows.small }]}>
-                        <View style={styles.transcriptionHeader}>
-                            <Text style={[styles.transcriptionTitle, { color: colors.text }]}>Transcription</Text>
-                            <View style={styles.actionButtons}>
-                                <TouchableOpacity onPress={copyTranscription} style={styles.actionButton}>
-                                    <Ionicons name="copy-outline" size={20} color={colors.primary} />
-                                </TouchableOpacity>
-                                <TouchableOpacity onPress={clearTranscription} style={styles.actionButton}>
-                                    <Ionicons name="trash-outline" size={20} color={colors.error} />
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                        <Text style={[styles.transcriptionText, { color: colors.gray }]}>{transcription}</Text>
-                    </View>
-                ) : null}
-            </View>
-        </ScrollView>
+                <View style={styles.bottomPadding} />
+            </ScrollView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    backBtn: {
-        position: 'absolute',
-        top: 48,
-        left: 16,
-        zIndex: 10,
-        padding: 8,
-    },
-    header: {
-        alignItems: 'center',
-        padding: 24,
-        paddingTop: 48,
-        borderBottomLeftRadius: 24,
-        borderBottomRightRadius: 24,
-    },
-    headerTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginTop: 12,
-    },
-    headerSubtitle: {
-        fontSize: 14,
-        marginTop: 4,
-    },
-    content: {
-        padding: 16,
-    },
-    recordContainer: {
-        alignItems: 'center',
-        marginVertical: 32,
-    },
-    recordButton: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    recordText: {
-        fontSize: 16,
-        fontWeight: '500',
-        marginTop: 16,
-    },
-    waveformContainer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: 4,
-        marginBottom: 24,
-        height: 60,
-    },
-    waveformBar: {
-        width: 6,
-        borderRadius: 3,
-    },
-    transcriptionContainer: {
-        padding: 16,
-    },
-    transcriptionHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    transcriptionTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-    },
-    actionButtons: {
-        flexDirection: 'row',
-        gap: 16,
-    },
-    actionButton: {
-        padding: 4,
-    },
-    transcriptionText: {
-        fontSize: 16,
-        lineHeight: 24,
-    },
+    container: { flex: 1 },
+    header: { paddingTop: 60, paddingBottom: 30, borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
+    backBtn: { position: 'absolute', top: 16, left: 16, zIndex: 10, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+    headerContent: { alignItems: 'center', paddingTop: 40 },
+    headerIcon: { width: 70, height: 70, borderRadius: 35, justifyContent: 'center', alignItems: 'center', marginBottom: 14 },
+    headerTitle: { fontSize: 26, fontWeight: 'bold', color: '#fff' },
+    headerSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.85)', marginTop: 4 },
+    content: { flex: 1, padding: 16 },
+    featuresGrid: { flexDirection: 'row', gap: 10, marginBottom: 28 },
+    featureCard: { flex: 1, alignItems: 'center', padding: 14, borderRadius: 16 },
+    featureIcon: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
+    featureLabel: { fontSize: 12, fontWeight: '600' },
+    featureDesc: { fontSize: 10, marginTop: 2 },
+    recordBtn: { alignItems: 'center', paddingVertical: 32, borderRadius: 24, marginBottom: 24 },
+    recordIcon: { width: 90, height: 90, borderRadius: 45, justifyContent: 'center', alignItems: 'center', marginBottom: 14 },
+    recordLabel: { fontSize: 18, fontWeight: '600', color: '#fff' },
+    recordingIndicator: { flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 6 },
+    recordingDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#fff' },
+    recordingText: { fontSize: 14, color: 'rgba(255,255,255,0.9)' },
+    resultCard: { padding: 18, borderRadius: 20 },
+    resultHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 14, gap: 10 },
+    resultIcon: { width: 42, height: 42, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+    resultTitle: { fontSize: 17, fontWeight: '700' },
+    resultText: { fontSize: 14, lineHeight: 22 },
+    resultActions: { flexDirection: 'row', gap: 12, marginTop: 16 },
+    actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12, borderRadius: 12, gap: 8 },
+    actionLabel: { fontSize: 14, fontWeight: '600' },
+    bottomPadding: { height: 30 },
 });
 
 export default SpeechToTextScreen;

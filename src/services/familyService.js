@@ -1,7 +1,7 @@
 // Family Service
 // API calls for family management
 
-import { apiClient, ENDPOINTS } from './api/client';
+import { apiClient, mobileApi, ENDPOINTS } from './api/mobileApi';
 
 export const familyService = {
     async createFamily(familyData) {

@@ -1,0 +1,946 @@
+{
+  "appName": "Nirbhaya Women Safety",
+  "version": "1.0.0",
+  "description": "A comprehensive women safety application with emergency features, family protection, and AI-powered assistance",
+  "categories": [
+    {
+      "id": "authentication",
+      "name": "Authentication & User",
+      "icon": "person-circle",
+      "color": "#8B5CF6",
+      "description": "User account and security features",
+      "features": [
+        {
+          "id": "login",
+          "title": "Login",
+          "description": "Sign in to your account with email/password or biometric authentication",
+          "steps": [
+            "Open the app on your device",
+            "Enter your registered email address",
+            "Enter your password",
+            "Tap 'Login' button",
+            "Or use Face ID/Fingerprint for quick access"
+          ],
+          "tips": [
+            "Enable biometric login for faster access",
+            "Keep your password secure"
+          ],
+          "icon": "log-in"
+        },
+        {
+          "id": "register",
+          "title": "Register",
+          "description": "Create a new account to access all features",
+          "steps": [
+            "Tap 'Register' on the login screen",
+            "Enter your full name",
+            "Provide your email address",
+            "Create a strong password",
+            "Confirm your password",
+            "Complete the registration"
+          ],
+          "tips": [
+            "Use a valid email for account recovery",
+            "Choose a strong password with letters and numbers"
+          ],
+          "icon": "person-add"
+        },
+        {
+          "id": "profile",
+          "title": "Profile Management",
+          "description": "Manage your personal information and preferences",
+          "steps": [
+            "Go to Profile tab",
+            "Tap on your profile picture to edit",
+            "Update your name, phone, and other details",
+            "Save changes"
+          ],
+          "tips": [
+            "Keep your emergency contact updated",
+            "Add a clear profile picture"
+          ],
+          "icon": "person"
+        }
+      ]
+    },
+    {
+      "id": "safety",
+      "name": "Core Safety",
+      "icon": "shield-checkmark",
+      "color": "#EF4444",
+      "description": "Emergency and safety features",
+      "features": [
+        {
+          "id": "sos",
+          "title": "SOS Emergency",
+          "description": "One-tap emergency alert to send your location and distress signal to emergency contacts",
+          "steps": [
+            "From Home screen, tap the red SOS button",
+            "Hold the SOS button for 3 seconds",
+            "Your location will be sent to emergency contacts",
+            "Siren will sound automatically",
+            "Recording starts automatically"
+          ],
+          "tips": [
+            "Add trusted emergency contacts",
+            "Keep your contacts prioritized",
+            "Test SOS monthly"
+          ],
+          "icon": "warning",
+          "urgent": true
+        },
+        {
+          "id": "emergency_contacts",
+          "title": "Emergency Contacts",
+          "description": "Manage your emergency contact list",
+          "steps": [
+            "Go to Women Safety screen",
+            "Tap 'Emergency Contacts'",
+            "Add new contact or edit existing",
+            "Set priority order (first contact gets called first)",
+            "Save contacts"
+          ],
+          "tips": [
+            "Add at least 3 emergency contacts",
+            "Prioritize family members",
+            "Update contacts regularly"
+          ],
+          "icon": "call"
+        },
+        {
+          "id": "live_tracking",
+          "title": "Live Tracking",
+          "description": "Share your live location with trusted contacts",
+          "steps": [
+            "Go to Live Tracking screen",
+            "Start live tracking session",
+            "Share the link with family/friends",
+            "They can view your real-time location",
+            "Stop tracking when safe"
+          ],
+          "tips": [
+            "Only share with trusted people",
+            "Check battery life before starting",
+            "Stop tracking when safe"
+          ],
+          "icon": "location"
+        },
+        {
+          "id": "siren",
+          "title": "Siren Alarm",
+          "description": "Loud alarm to deter attackers and attract attention",
+          "steps": [
+            "From Women Safety screen",
+            "Tap the Siren button",
+            "The alarm will sound immediately",
+            "Tap again to stop"
+          ],
+          "tips": [
+            "Practice using it safely",
+            "Keep volume at maximum",
+            "Use in emergencies only"
+          ],
+          "icon": "notifications"
+        },
+        {
+          "id": "recording",
+          "title": "Audio/Video Recording",
+          "description": "Automatically record audio/video during emergencies",
+          "steps": [
+            "SOS activation starts recording automatically",
+            "Video recording as fallback to audio",
+            "Save to device or cloud",
+            "Recording includes location data"
+          ],
+          "tips": [
+            "Check storage space regularly",
+            "Review recordings for evidence",
+            "Keep cloud backup enabled"
+          ],
+          "icon": "videocam"
+        }
+      ]
+    },
+    {
+      "id": "family",
+      "name": "Family & Friends",
+      "icon": "people",
+      "color": "#8B5CF6",
+      "description": "Family management and location sharing",
+      "features": [
+        {
+          "id": "family_management",
+          "title": "Family Management",
+          "description": "Create and manage family groups",
+          "steps": [
+            "Go to Family screen",
+            "Tap 'Create Family' button",
+            "Enter family name",
+            "Invite members via email or phone",
+            "Members join using invite code"
+          ],
+          "tips": [
+            "Create separate families for different groups",
+            "Add a family admin for management",
+            "Keep family size reasonable"
+          ],
+          "icon": "people"
+        },
+        {
+          "id": "add_member",
+          "title": "Add Family Members",
+          "description": "Add members to your family group",
+          "steps": [
+            "Open Family screen",
+            "Tap 'Add Member'",
+            "Search by phone number or email",
+            "Send invitation",
+            "Member accepts to join"
+          ],
+          "tips": [
+            "Ensure correct contact info",
+            "Members must have app installed",
+            "Set appropriate roles"
+          ],
+          "icon": "person-add"
+        },
+        {
+          "id": "family_location",
+          "title": "Family Location",
+          "description": "View real-time locations of family members",
+          "steps": [
+            "Go to Family Location screen",
+            "View all family members on map",
+            "Tap on member to see details",
+            "Refresh to update locations",
+            "Set location update interval"
+          ],
+          "tips": [
+            "Respect family members' privacy",
+            "Enable location for accurate tracking",
+            "Set reasonable refresh intervals"
+          ],
+          "icon": "map"
+        },
+        {
+          "id": "relationships",
+          "title": "Relationship Editor",
+          "description": "Define relationships with family members",
+          "steps": [
+            "Go to Relationship Editor",
+            "Select family member",
+            "Choose relationship type",
+            "Save relationship"
+          ],
+          "tips": [
+            "Accurate relationships help in emergencies",
+            "Update when relationships change"
+          ],
+          "icon": "heart"
+        }
+      ]
+    },
+    {
+      "id": "disguised",
+      "name": "Disguised Features",
+      "icon": "eye-off",
+      "color": "#6366F1",
+      "description": "Stealth features for dangerous situations",
+      "features": [
+        {
+          "id": "fake_call",
+          "title": "Fake Incoming Call",
+          "description": "Simulate an incoming call to escape awkward situations",
+          "steps": [
+            "Go to Fake Call screen",
+            "Set caller name and time",
+            "Tap 'Schedule Call'",
+            "Receive fake call at set time",
+            "Shake to decline"
+          ],
+          "tips": [
+            "Customize caller name for realism",
+            "Practice shake-to-decline",
+            "Use realistic scenarios"
+          ],
+          "icon": "call"
+        },
+        {
+          "id": "fake_message",
+          "title": "Fake Message Alert",
+          "description": "Receive fake message notifications",
+          "steps": [
+            "Go to Fake Message Alert",
+            "Choose sender name",
+            "Write message content",
+            "Set notification sound",
+            "Trigger manually or schedule"
+          ],
+          "tips": [
+            "Use realistic message content",
+            "Choose appropriate sounds",
+            "Schedule for specific times"
+          ],
+          "icon": "chatbox-ellipses"
+        },
+        {
+          "id": "fake_battery",
+          "title": "Fake Battery Death",
+          "description": "Simulate phone power-off to leave safely",
+          "steps": [
+            "Go to Fake Battery Death",
+            "Configure screen appearance",
+            "Activate when needed",
+            "Phone appears to power off",
+            "Actually still functional"
+          ],
+          "tips": [
+            "Works as a subtle escape tool",
+            "Practice the gesture",
+            "Keep phone charged"
+          ],
+          "icon": "battery-dead"
+        },
+        {
+          "id": "disguised_icon",
+          "title": "Disguised App Icon",
+          "description": "Change app appearance to look like other apps",
+          "steps": [
+            "Go to Settings",
+            "Find Disguised Icon option",
+            "Choose disguise (Calculator, Notes, Weather, etc.)",
+            "App icon changes immediately",
+            "Open disguised app to access safety features"
+          ],
+          "tips": [
+            "Choose appropriate disguise",
+            "Remember how to exit disguise",
+            "Test regularly"
+          ],
+          "icon": "apps"
+        }
+      ]
+    },
+    {
+      "id": "voice",
+      "name": "Voice & Trigger",
+      "icon": "mic",
+      "color": "#F59E0B",
+      "description": "Voice activation and button triggers",
+      "features": [
+        {
+          "id": "voice_keyword",
+          "title": "Voice Keyword Detection",
+          "description": "Trigger SOS by speaking a specific keyword",
+          "steps": [
+            "Go to Voice Keyword screen",
+            "Enable voice detection",
+            "Set custom keyword or use default",
+            "Test the keyword",
+            "Background detection starts"
+          ],
+          "tips": [
+            "Choose a word that's easy to say",
+            "Practice in quiet environments",
+            "Default keywords: Help, Emergency, SOS"
+          ],
+          "icon": "mic"
+        },
+        {
+          "id": "volume_button",
+          "title": "Volume Button SOS",
+          "description": "Trigger SOS by pressing volume buttons",
+          "steps": [
+            "Go to Volume Button screen",
+            "Enable volume button trigger",
+            "Set press count (default: 3)",
+            "Set time window (default: 3 seconds)",
+            "Press rapidly in emergency"
+          ],
+          "tips": [
+            "Practice the pattern",
+            "Adjust count for ease of use",
+            "Works even when phone is locked"
+          ],
+          "volume": "keypad"
+        }
+      ]
+    },
+    {
+      "id": "location",
+      "name": "Smart Location",
+      "icon": "map",
+      "color": "#10B981",
+      "description": "Location-based safety features",
+      "features": [
+        {
+          "id": "geofencing",
+          "title": "Safe Zones (Geofencing)",
+          "description": "Create safe zones and get alerts when breached",
+          "steps": [
+            "Go to Smart Location",
+            "Tap 'Add Safe Zone'",
+            "Mark current location or search address",
+            "Set radius (100m - 5km)",
+            "Name the zone",
+            "Enable alerts"
+          ],
+          "tips": [
+            "Create zones for home, work, school",
+            "Set appropriate radius",
+            "Enable notifications"
+          ],
+          "icon": "git-compare"
+        },
+        {
+          "id": "darkness_reminder",
+          "title": "Darkness Reminder",
+          "description": "Get alerts about unsafe travel conditions after dark",
+          "steps": [
+            "Go to Smart Location",
+            "Enable Darkness Reminder",
+            "Set preferred alert time",
+            "Get sunset journey alerts",
+            "Plan safe travel accordingly"
+          ],
+          "tips": [
+            "Adjust time based on location",
+            "Combine with safe route",
+            "Use during winter months"
+          ],
+          "icon": "moon"
+        },
+        {
+          "id": "parked_car",
+          "title": "Parked Car Location",
+          "description": "Never forget where you parked",
+          "steps": [
+            "Tap 'Park Car' when parking",
+            "Location is saved automatically",
+            "Tap 'Find Car' to navigate back",
+            "Share parking location with others"
+          ],
+          "tips": [
+            "Works with automatic detection",
+            "Take a photo of parking spot",
+            "Share with family"
+          ],
+          "icon": "car"
+        },
+        {
+          "id": "safe_route",
+          "title": "Safe Route Analysis",
+          "description": "Get safety scores for different routes",
+          "steps": [
+            "Go to Safe Route screen",
+            "Enter destination",
+            "View multiple route options",
+            "Check safety score for each",
+            "Choose safest route",
+            "Get turn-by-turn directions"
+          ],
+          "tips": [
+            "Check multiple routes",
+            "Consider time of day",
+            "Look for well-lit areas"
+          ],
+          "icon": "navigate"
+        },
+        {
+          "id": "safety_map",
+          "title": "Safety Map",
+          "description": "View nearby safe points and danger zones",
+          "steps": [
+            "Go to Safety Map",
+            "View map with safety markers",
+            "Filter by type (police, hospital, etc.)",
+            "Get directions to safe points",
+            "Report unsafe areas"
+          ],
+          "tips": [
+            "Explore your neighborhood",
+            "Save frequent destinations",
+            "Report new safe points"
+          ],
+          "icon": "map"
+        }
+      ]
+    },
+    {
+      "id": "ai",
+      "name": "AI Features",
+      "icon": "chatbubbles",
+      "color": "#EC4899",
+      "description": "Artificial intelligence powered assistance",
+      "features": [
+        {
+          "id": "ai_chat",
+          "title": "AI Chat Assistant",
+          "description": "24/7 AI assistant for safety guidance and support",
+          "steps": [
+            "Go to AI Chat tab",
+            "Type your question or concern",
+            "Get instant responses",
+            "Continue conversation for help",
+            "Request emergency assistance"
+          ],
+          "tips": [
+            "Ask specific safety questions",
+            "Use for mental health support",
+            "Get real-time guidance"
+          ],
+          "icon": "chatbubbles"
+        },
+        {
+          "id": "vision",
+          "title": "AI Vision",
+          "description": "Analyze images for safety assessment",
+          "steps": [
+            "Go to Vision screen",
+            "Take photo or select from gallery",
+            "AI analyzes the image",
+            "Get safety assessment",
+            "Receive recommendations"
+          ],
+          "tips": [
+            "Use for unfamiliar locations",
+            "Check surroundings quickly",
+            "Get threat assessment"
+          ],
+          "icon": "eye"
+        },
+        {
+          "id": "speech_to_text",
+          "title": "Speech to Text",
+          "description": "Convert speech to text for documentation",
+          "steps": [
+            "Go to Speech to Text",
+            "Tap microphone to start",
+            "Speak clearly",
+            "View text in real-time",
+            "Copy or share the text"
+          ],
+          "tips": [
+            "Speak clearly and at normal pace",
+            "Use for incident documentation",
+            "Check accuracy before sharing"
+          ],
+          "icon": "mic"
+        },
+        {
+          "id": "text_to_speech",
+          "title": "Text to Speech",
+          "description": "Convert text to audible speech",
+          "steps": [
+            "Go to Text to Speech",
+            "Enter or paste text",
+            "Select voice and speed",
+            "Tap Play to hear",
+            "Adjust settings as needed"
+          ],
+          "tips": [
+            "Use for reading emergency signs",
+            "Help in unfamiliar places",
+            "Adjust speed for clarity"
+          ],
+          "icon": "volume-high"
+        },
+        {
+          "id": "thought_generator",
+          "title": "Thought Generator",
+          "description": "AI-powered positive thought generator",
+          "steps": [
+            "Go to Thought Generator",
+            "Tap to generate new thought",
+            "Read inspirational content",
+            "Save favorites",
+            "Share with others"
+          ],
+          "tips": [
+            "Use for daily motivation",
+            "Build a collection of favorites",
+            "Share positivity"
+          ],
+          "icon": "bulb"
+        },
+        {
+          "id": "models",
+          "title": "AI Models Browser",
+          "description": "Access different AI models for various tasks",
+          "steps": [
+            "Go to Models screen",
+            "Browse available AI models",
+            "Select model for specific task",
+            "Switch between models easily",
+            "Compare results"
+          ],
+          "tips": [
+            "Choose model based on task",
+            "Each model has strengths",
+            "Experiment with different models"
+          ],
+          "icon": "server"
+        }
+      ]
+    },
+    {
+      "id": "behavior",
+      "name": "Behavior Analysis",
+      "icon": "analytics",
+      "color": "#06B6D4",
+      "description": "AI-powered behavior monitoring",
+      "features": [
+        {
+          "id": "behavior_pattern",
+          "title": "Behavior Pattern Analysis",
+          "description": "AI analyzes your routine for anomalies",
+          "steps": [
+            "Go to Behavior Pattern screen",
+            "Allow location tracking",
+            "AI learns your routine",
+            "View behavior insights",
+            "Get anomaly alerts"
+          ],
+          "tips": [
+            "Enable continuous tracking",
+            "Review insights regularly",
+            "Update routine when needed"
+          ],
+          "icon": "trending-up"
+        },
+        {
+          "id": "route_deviation",
+          "title": "Route Deviation Alert",
+          "description": "Get notified when you deviate from normal routes",
+          "steps": [
+            "Enable behavior analysis in settings",
+            "Allow location access",
+            "System learns your routes",
+            "Receive alerts on deviation",
+            "Check reason for deviation"
+          ],
+          "tips": [
+            "Helpful for daily commutes",
+            "Works for frequent routes",
+            "Check alerts immediately"
+          ],
+          "icon": "git-branch"
+        }
+      ]
+    },
+    {
+      "id": "resources",
+      "name": "Safety Resources",
+      "icon": "book",
+      "color": "#14B8A6",
+      "description": "Educational content and emergency contacts",
+      "features": [
+        {
+          "id": "safety_tutorials",
+          "title": "Safety Tutorials",
+          "description": "Learn self-defense and safety skills",
+          "steps": [
+            "Go to Safety Tutorials",
+            "Browse by category",
+            "Filter by difficulty",
+            "Watch video tutorials",
+            "Practice regularly"
+          ],
+          "tips": [
+            "Start with basics",
+            "Practice in safe environment",
+            "Learn multiple techniques"
+          ],
+          "icon": "school"
+        },
+        {
+          "id": "safety_news",
+          "title": "Safety News",
+          "description": "Stay updated with latest safety news",
+          "steps": [
+            "Go to Safety News",
+            "Browse featured articles",
+            "Filter by category",
+            "Search for specific topics",
+            "Save articles for later"
+          ],
+          "tips": [
+            "Check regularly for updates",
+            "Enable notifications for breaking news",
+            "Share important news"
+          ],
+          "icon": "newspaper"
+        },
+        {
+          "id": "safety_laws",
+          "title": "Safety Laws",
+          "description": "Know your legal rights and protections",
+          "steps": [
+            "Go to Safety Laws",
+            "Browse by category",
+            "Filter by jurisdiction",
+            "Read detailed descriptions",
+            "View penalty information"
+          ],
+          "tips": [
+            "Know your rights",
+            "Understand local laws",
+            "Use for legal help"
+          ],
+          "icon": "document-text"
+        },
+        {
+          "id": "helplines",
+          "title": "Emergency Helplines",
+          "description": "Quick access to emergency contact numbers",
+          "steps": [
+            "Go to Emergency Helplines",
+            "View all helplines",
+            "Tap to call directly",
+            "Access online portals",
+            "Save favorites"
+          ],
+          "tips": [
+            "Save important numbers",
+            "Know local emergency numbers",
+            "Save to phone contacts"
+          ],
+          "icon": "call"
+        },
+        {
+          "id": "grievance",
+          "title": "Grievance Filing",
+          "description": "File complaints and track status",
+          "steps": [
+            "Go to Grievance screen",
+            "Fill complaint form",
+            "Submit with details",
+            "Track complaint status",
+            "Receive updates"
+          ],
+          "tips": [
+            "Provide detailed information",
+            "Keep reference number",
+            "Follow up regularly"
+          ],
+          "icon": "clipboard"
+        }
+      ]
+    },
+    {
+      "id": "settings",
+      "name": "Settings",
+      "icon": "settings",
+      "color": "#6B7280",
+      "description": "App configuration and preferences",
+      "features": [
+        {
+          "id": "theme",
+          "title": "Dark/Light Mode",
+          "description": "Customize app appearance",
+          "steps": [
+            "Go to Settings",
+            "Find Theme option",
+            "Toggle between Dark/Light",
+            "Or use System Default"
+          ],
+          "tips": [
+            "Dark mode saves battery",
+            "Use in low light",
+            "System default adjusts automatically"
+          ],
+          "icon": "moon"
+        },
+        {
+          "id": "permissions",
+          "title": "Permission Management",
+          "description": "Control app permissions and access",
+          "steps": [
+            "Go to Settings",
+            "Find Permissions section",
+            "Manage Location, Camera, Mic access",
+            "Enable/disable as needed",
+            "Review regularly"
+          ],
+          "tips": [
+            "Enable location for safety features",
+            "Camera needed for vision AI",
+            "Mic for voice commands"
+          ],
+          "icon": "lock-closed"
+        },
+        {
+          "id": "sos_settings",
+          "title": "SOS Settings",
+          "description": "Configure SOS behavior and triggers",
+          "steps": [
+            "Go to Settings",
+            "Find SOS Settings",
+            "Configure auto-SOS",
+            "Set shake-to-SOS",
+            "Set volume-press SOS",
+            "Configure SOS timer"
+          ],
+          "tips": [
+            "Test all SOS methods",
+            "Set appropriate timer delay",
+            "Keep at least one enabled"
+          ],
+          "icon": "warning"
+        },
+        {
+          "id": "privacy",
+          "title": "Privacy Policy",
+          "description": "Review app privacy practices",
+          "steps": [
+            "Go to Settings",
+            "Find Privacy Policy",
+            "Read full policy",
+            "Understand data usage",
+            "Manage preferences"
+          ],
+          "tips": [
+            "Read privacy policy carefully",
+            "Review periodically",
+            "Update preferences"
+          ],
+          "icon": "shield"
+        },
+        {
+          "id": "terms",
+          "title": "Terms of Service",
+          "description": "Review app terms and conditions",
+          "steps": [
+            "Go to Settings",
+            "Find Terms of Service",
+            "Read all terms",
+            "Understand usage conditions"
+          ],
+          "tips": [
+            "Read when updating",
+            "Understand your rights",
+            "Contact support for questions"
+          ],
+          "icon": "document"
+        }
+      ]
+    },
+    {
+      "id": "special",
+      "name": "Special Services",
+      "icon": "construct",
+      "color": "#F97316",
+      "description": "Additional specialized services",
+      "features": [
+        {
+          "id": "cylinder_verification",
+          "title": "Cylinder Verification",
+          "description": "Verify gas cylinder authenticity and validity",
+          "steps": [
+            "Go to Cylinder Verification",
+            "Select region (IN/US/EU)",
+            "Scan cylinder barcode/QR",
+            "View verification results",
+            "Check test dates"
+          ],
+          "tips": [
+            "Verify before first use",
+            "Check expiry dates",
+            "Report suspicious cylinders"
+          ],
+          "icon": "barcode"
+        },
+        {
+          "id": "child_care",
+          "title": "Child Care",
+          "description": "Track and manage child-related activities",
+          "steps": [
+            "Go to Child Care screen",
+            "Add children profiles",
+            "Track daily activities",
+            "Monitor growth milestones",
+            "Set reminders"
+          ],
+          "tips": [
+            "Keep profiles updated",
+            "Use for school tracking",
+            "Set appropriate alerts"
+          ],
+          "icon": "happy"
+        },
+        {
+          "id": "home_automation",
+          "title": "Home Automation",
+          "description": "Control smart home devices for safety",
+          "steps": [
+            "Go to Home Automation",
+            "Connect smart devices",
+            "Set up automation rules",
+            "Control remotely",
+            "Create safety scenarios"
+          ],
+          "tips": [
+            "Set up emergency lighting",
+            "Configure automated locks",
+            "Test regularly"
+          ],
+          "icon": "home"
+        },
+        {
+          "id": "ai_workshop",
+          "title": "AI Safety Workshop",
+          "description": "Learn about AI-powered safety features",
+          "steps": [
+            "Go to AI Safety Workshop",
+            "Browse available courses",
+            "Enroll in courses",
+            "Complete lessons",
+            "Earn certifications"
+          ],
+          "tips": [
+            "Start with basics",
+            "Practice with real scenarios",
+            "Share knowledge"
+          ],
+          "icon": "book"
+        },
+        {
+          "id": "qr_scanner",
+          "title": "QR Code Scanner",
+          "description": "Scan QR codes for quick access",
+          "steps": [
+            "Go to QR Scanner",
+            "Point camera at QR code",
+            "Scan automatically",
+            "View encoded information",
+            "Take appropriate action"
+          ],
+          "tips": [
+            "Verify QR source",
+            "Don't scan unknown codes",
+            "Use for sharing location"
+          ],
+          "icon": "qr-code"
+        },
+        {
+          "id": "community",
+          "title": "Community",
+          "description": "Connect with other users for support",
+          "steps": [
+            "Go to Community screen",
+            "Join discussion groups",
+            "Share experiences",
+            "Get peer support",
+            "Help others"
+          ],
+          "tips": [
+            "Be respectful",
+            "Share helpful experiences",
+            "Report inappropriate content"
+          ],
+          "icon": "people-circle"
+        }
+      ]
+    }
+  ]
+}

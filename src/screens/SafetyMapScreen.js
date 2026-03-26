@@ -161,7 +161,7 @@ const SafetyMapScreen = ({ navigation }) => {
                     description={incident.description}
                 >
                     <View style={[styles.markerContainer, { backgroundColor: getIncidentColor(incident.type) }]}>
-                        <Ionicons name="alert" size={16} color="#fff" />
+                        <Ionicons name="alert-outline" size={16} color="#fff" />
                     </View>
                 </Marker>
             ));
@@ -179,7 +179,7 @@ const SafetyMapScreen = ({ navigation }) => {
                     description={zone.description}
                 >
                     <View style={[styles.markerContainer, { backgroundColor: '#10B981' }]}>
-                        <Ionicons name="shield-checkmark" size={16} color="#fff" />
+                        <Ionicons name="shield-checkmark-outline" size={16} color="#fff" />
                     </View>
                 </Marker>
             ));
@@ -237,21 +237,21 @@ const SafetyMapScreen = ({ navigation }) => {
                     style={[styles.tab, selectedTab === 'incidents' && { backgroundColor: colors.primary + '20' }]}
                     onPress={() => setSelectedTab('incidents')}
                 >
-                    <Ionicons name="alert-circle" size={20} color={selectedTab === 'incidents' ? colors.primary : colors.gray} />
+                    <Ionicons name="alert-circle-outline" size={20} color={selectedTab === 'incidents' ? colors.primary : colors.gray} />
                     <Text style={[styles.tabText, { color: selectedTab === 'incidents' ? colors.primary : colors.gray }]}>Incidents</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.tab, selectedTab === 'safe' && { backgroundColor: colors.primary + '20' }]}
                     onPress={() => setSelectedTab('safe')}
                 >
-                    <Ionicons name="shield-checkmark" size={20} color={selectedTab === 'safe' ? colors.primary : colors.gray} />
+                    <Ionicons name="shield-checkmark-outline" size={20} color={selectedTab === 'safe' ? colors.primary : colors.gray} />
                     <Text style={[styles.tabText, { color: selectedTab === 'safe' ? colors.primary : colors.gray }]}>Safe Zones</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.tab, selectedTab === 'all' && { backgroundColor: colors.primary + '20' }]}
                     onPress={() => setSelectedTab('all')}
                 >
-                    <Ionicons name="layers" size={20} color={selectedTab === 'all' ? colors.primary : colors.gray} />
+                    <Ionicons name="layers-outline" size={20} color={selectedTab === 'all' ? colors.primary : colors.gray} />
                     <Text style={[styles.tabText, { color: selectedTab === 'all' ? colors.primary : colors.gray }]}>All</Text>
                 </TouchableOpacity>
             </View>
@@ -262,14 +262,14 @@ const SafetyMapScreen = ({ navigation }) => {
                     style={[styles.actionButton, { backgroundColor: colors.primary, ...shadows.medium }]}
                     onPress={() => setShowReportModal(true)}
                 >
-                    <Ionicons name="add-circle" size={24} color="#fff" />
+                    <Ionicons name="add-circle-outline" size={24} color="#fff" />
                     <Text style={styles.actionButtonText}>Report</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.actionButton, { backgroundColor: colors.secondary, ...shadows.medium }]}
                     onPress={centerOnUser}
                 >
-                    <Ionicons name="locate" size={24} color="#fff" />
+                    <Ionicons name="locate-outline" size={24} color="#fff" />
                     <Text style={styles.actionButtonText}>My Location</Text>
                 </TouchableOpacity>
             </View>
@@ -299,7 +299,7 @@ const SafetyMapScreen = ({ navigation }) => {
                             >
                                 <View style={[styles.listIcon, { backgroundColor: item.rating ? '#10B98120' : getIncidentColor(item.type) + '20' }]}>
                                     <Ionicons
-                                        name={item.rating ? 'shield-checkmark' : 'alert-circle'}
+                                        name={item.rating ? 'shield-checkmark-outline' : 'alert-circle-outline'}
                                         size={20}
                                         color={item.rating ? '#10B981' : getIncidentColor(item.type)}
                                     />

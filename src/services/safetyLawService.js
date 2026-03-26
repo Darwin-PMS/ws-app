@@ -5,39 +5,44 @@ import { mobileApi, ENDPOINTS } from './api/mobileApi';
 
 export const safetyLawService = {
     async getLaws(params = {}) {
-        return mobileApi.get(ENDPOINTS.safetyLaws.list);
+        let url = ENDPOINTS.safetyLaws.list;
+        if (Object.keys(params).length > 0) {
+            const queryString = new URLSearchParams(params).toString();
+            url = `${url}?${queryString}`;
+        }
+        return mobileApi.get(url, { skipAuth: true });
     },
 
     async getLawById(id) {
-        return mobileApi.get(ENDPOINTS.safetyLaws.byId(id));
+        return mobileApi.get(ENDPOINTS.safetyLaws.byId(id), { skipAuth: true });
     },
 
     async getCategories() {
-        return mobileApi.get(ENDPOINTS.safetyLaws.categories);
+        return mobileApi.get(ENDPOINTS.safetyLaws.categories, { skipAuth: true });
     },
 
     async getJurisdictions() {
-        return mobileApi.get(ENDPOINTS.safetyLaws.jurisdictions);
+        return mobileApi.get(ENDPOINTS.safetyLaws.jurisdictions, { skipAuth: true });
     },
 
     async searchLaws(keyword) {
-        return mobileApi.get(ENDPOINTS.safetyLaws.search);
+        let url = ENDPOINTS.safetyLaws.search;
+        if (keyword) {
+            url = `${url}?keyword=${encodeURIComponent(keyword)}`;
+        }
+        return mobileApi.get(url, { skipAuth: true });
     },
 
     async getLawsByCategory(categoryId) {
-        return mobileApi.get(ENDPOINTS.safetyLaws.byCategory(categoryId));
+        return mobileApi.get(ENDPOINTS.safetyLaws.byCategory(categoryId), { skipAuth: true });
     },
 
     async getLawsByJurisdiction(jurisdictionId) {
-        return mobileApi.get(ENDPOINTS.safetyLaws.byJurisdiction(jurisdictionId));
-    },
-
-    async getLawsByCategoryAndJurisdiction(categoryId, jurisdictionId) {
-        return mobileApi.get(ENDPOINTS.safetyLaws.list);
+        return mobileApi.get(ENDPOINTS.safetyLaws.byJurisdiction(jurisdictionId), { skipAuth: true });
     },
 
     async getRecentLaws(limit = 10) {
-        return mobileApi.get(ENDPOINTS.safetyLaws.recent);
+        return mobileApi.get(`${ENDPOINTS.safetyLaws.recent}?limit=${limit}`, { skipAuth: true });
     }
 };
 

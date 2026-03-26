@@ -6,6 +6,7 @@ import { API_CONFIG, ENDPOINTS } from './api/endpoints';
 
 // API Configuration - Using factory config
 const API_BASE_URL = `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile`;
+const API_ADMIN_URL = `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/admin`;
 
 // User Roles
 export const USER_ROLES = {
@@ -26,6 +27,66 @@ class DatabaseService {
     // Set callback for token updates
     setTokenUpdateCallback(callback) {
         this.tokenUpdateCallback = callback;
+    }
+
+    // Generic fetch wrapper for admin API
+    async fetchAdminAPI(endpoint, options = {}) {
+        const defaultHeaders = {
+            'Content-Type': 'application/json',
+        };
+
+        if (this.token) {
+            defaultHeaders['Authorization'] = `Bearer ${this.token}`;
+        }
+
+        const requestHeaders = {
+            ...defaultHeaders,
+            ...options.headers,
+        };
+
+        const fullUrl = `${API_ADMIN_URL}${endpoint}`;
+
+        if (__DEV__) {
+            console.log('Admin API:', options.method || 'GET', endpoint);
+        }
+
+        loggerService.info('api', `Admin API: ${options.method || 'GET'} ${endpoint}`);
+
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+            const response = await fetch(fullUrl, {
+                ...options,
+                headers: requestHeaders,
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            const responseData = await response.json();
+
+            if (!response.ok) {
+                let errorMessage = `${response.status}`;
+                try {
+                    errorData = await response.json();
+                    errorMessage = errorData.message || errorData.error || `${response.status}: ${response.statusText}`;
+                } catch (e) {
+                    errorMessage = response.statusText ? `${response.status} - ${response.statusText}` : `Error: ${response.status}`;
+                }
+                throw new Error(errorMessage);
+            }
+
+            loggerService.info('api', `Admin Success: ${endpoint}`, { method: options.method, status: response.status });
+            return responseData;
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                throw new Error('Request timeout - please try again');
+            }
+            console.error('Admin API Error:', error.message);
+            loggerService.error('api', `Admin API Error: ${error.message}`, { endpoint, method: options.method }, error);
+            throw error;
+        }
     }
 
     // Set authentication tokens
@@ -365,28 +426,28 @@ class DatabaseService {
     // Get all users (Admin only)
     async getAllUsers(options = {}) {
         const queryParams = new URLSearchParams(options).toString();
-        return this.fetchAPI(`/admin/users?${queryParams}`);
+        return this.fetchAdminAPI(`/users?${queryParams}`);
     }
 
     // Get user statistics (Admin only)
     async getUserStats() {
-        return this.fetchAPI('/admin/stats');
+        return this.fetchAdminAPI('/analytics/stats');
     }
 
     // Get all families (Admin only)
     async getAllFamilies(options = {}) {
         const queryParams = new URLSearchParams(options).toString();
-        return this.fetchAPI(`/admin/families?${queryParams}`);
+        return this.fetchAdminAPI(`/families?${queryParams}`);
     }
 
     // Get family by ID (Admin only)
     async getFamilyById(familyId) {
-        return this.fetchAPI(`/admin/families/${familyId}`);
+        return this.fetchAdminAPI(`/families/${familyId}`);
     }
 
     // Update family (Admin only)
     async updateFamily(familyId, familyData) {
-        return this.fetchAPI(`/admin/families/${familyId}`, {
+        return this.fetchAdminAPI(`/families/${familyId}`, {
             method: 'PUT',
             body: JSON.stringify(familyData),
         });
@@ -394,9 +455,136 @@ class DatabaseService {
 
     // Delete family (Admin only)
     async deleteFamily(familyId) {
-        return this.fetchAPI(`/admin/families/${familyId}`, {
+        return this.fetchAdminAPI(`/families/${familyId}`, {
             method: 'DELETE',
         });
+    }
+
+    // Update user role (Admin only)
+    async updateUserRole(userId, role) {
+        return this.fetchAdminAPI(`/users/${userId}/role`, {
+            method: 'PUT',
+            body: JSON.stringify({ role }),
+        });
+    }
+
+    // Update user status (Admin only)
+    async updateUserStatus(userId, status) {
+        return this.fetchAdminAPI(`/users/${userId}/status`, {
+            method: 'PUT',
+            body: JSON.stringify({ status }),
+        });
+    }
+
+    // Delete user (Admin only)
+    async deleteUser(userId) {
+        return this.fetchAdminAPI(`/users/${userId}`, {
+            method: 'DELETE',
+        });
+    }
+
+    // Search users (Admin only)
+    async searchUsers(query) {
+        return this.fetchAdminAPI(`/users/search?q=${encodeURIComponent(query)}`);
+    }
+
+    // Get all SOS alerts (Admin only)
+    async getAllSOSAlerts(options = {}) {
+        const queryParams = new URLSearchParams(options).toString();
+        return this.fetchAdminAPI(`/sos-alerts?${queryParams}`);
+    }
+
+    // Get SOS alert by ID (Admin only)
+    async getSOSAlertById(alertId) {
+        return this.fetchAdminAPI(`/sos-alerts/${alertId}`);
+    }
+
+    // Resolve SOS alert (Admin only)
+    async resolveSOSAlert(alertId, resolution) {
+        return this.fetchAdminAPI(`/sos-alerts/${alertId}/resolve`, {
+            method: 'PUT',
+            body: JSON.stringify(resolution),
+        });
+    }
+
+    // Get active locations (Admin only)
+    async getActiveLocations(options = {}) {
+        const queryParams = new URLSearchParams(options).toString();
+        return this.fetchAdminAPI(`/tracking/locations?${queryParams}`);
+    }
+
+    // Get user location history (Admin only)
+    async getUserLocationHistory(userId, options = {}) {
+        const queryParams = new URLSearchParams(options).toString();
+        return this.fetchAdminAPI(`/tracking/user/${userId}/history?${queryParams}`);
+    }
+
+    // Get activity logs (Admin only)
+    async getActivityLogs(options = {}) {
+        const queryParams = new URLSearchParams(options).toString();
+        return this.fetchAdminAPI(`/activity?${queryParams}`);
+    }
+
+    // Get system health (Admin only)
+    async getSystemHealth() {
+        return this.fetchAdminAPI('/health');
+    }
+
+    // Get grievances (Admin only)
+    async getGrievances(options = {}) {
+        const queryParams = new URLSearchParams(options).toString();
+        return this.fetchAdminAPI(`/grievance?${queryParams}`);
+    }
+
+    // Update grievance status (Admin only)
+    async updateGrievanceStatus(grievanceId, status) {
+        return this.fetchAdminAPI(`/grievance/${grievanceId}/status`, {
+            method: 'PUT',
+            body: JSON.stringify({ status }),
+        });
+    }
+
+    // Get emergency contacts (Admin only)
+    async getEmergencyContacts(options = {}) {
+        const queryParams = new URLSearchParams(options).toString();
+        return this.fetchAdminAPI(`/emergency-contacts?${queryParams}`);
+    }
+
+    // Get notifications (Admin only)
+    async getAllAdminNotifications(options = {}) {
+        const queryParams = new URLSearchParams(options).toString();
+        return this.fetchAdminAPI(`/notifications?${queryParams}`);
+    }
+
+    // Send notification to user (Admin only)
+    async sendNotificationToUser(userId, notification) {
+        return this.fetchAdminAPI(`/notifications/${userId}`, {
+            method: 'POST',
+            body: JSON.stringify(notification),
+        });
+    }
+
+    // Broadcast notification (Admin only)
+    async broadcastNotification(notification) {
+        return this.fetchAdminAPI('/notifications/broadcast', {
+            method: 'POST',
+            body: JSON.stringify(notification),
+        });
+    }
+
+    // Get user children/dependents (Admin only)
+    async getUserChildren(userId) {
+        return this.fetchAdminAPI(`/users/${userId}/dependents`);
+    }
+
+    // Get user family memberships (Admin only)
+    async getUserFamilies(userId) {
+        return this.fetchAdminAPI(`/users/${userId}/families`);
+    }
+
+    // Get user family members (Admin only)
+    async getUserFamilyMembers(userId) {
+        return this.fetchAdminAPI(`/users/${userId}/families`);
     }
 }
 

@@ -1,216 +1,83 @@
-import React, { useState, useEffect } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    ScrollView,
-    RefreshControl,
-    Alert,
-} from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
-import { useApp } from '../context/AppContext';
-import databaseService from '../services/databaseService';
 
-const NotificationScreen = () => {
-    const { colors, spacing, borderRadius, shadows } = useTheme();
-    const { userId } = useApp();
+const NotificationScreen = ({ navigation }) => {
+    const { colors, shadows } = useTheme();
 
-    const [notifications, setNotifications] = useState([]);
-    const [isRefreshing, setIsRefreshing] = useState(false);
+    const notifications = [
+        { id: 1, type: 'emergency', title: 'Emergency Alert', message: 'SOS alert sent to emergency contacts', time: '2 min ago', unread: true },
+        { id: 2, type: 'family', title: 'Family Update', message: 'Family location updated successfully', time: '15 min ago', unread: true },
+        { id: 3, type: 'system', title: 'Security Alert', message: 'New device login detected', time: '1 hour ago', unread: false },
+        { id: 4, type: 'info', title: 'Safety Tip', message: 'Check out our new safety tutorial', time: '2 hours ago', unread: false },
+        { id: 5, type: 'family', title: 'Live Share', message: 'Live share session ended', time: '3 hours ago', unread: false },
+    ];
 
-    useEffect(() => {
-        loadNotifications();
-    }, []);
-
-    const loadNotifications = async () => {
-        try {
-            const response = await databaseService.getNotifications(userId);
-            if (response.success) {
-                setNotifications(response.data || []);
-            }
-        } catch (error) {
-            console.error('Error loading notifications:', error);
-        }
-    };
-
-    const onRefresh = async () => {
-        setIsRefreshing(true);
-        await loadNotifications();
-        setIsRefreshing(false);
-    };
-
-    const markAsRead = async (notificationId) => {
-        try {
-            await databaseService.markNotificationRead(notificationId);
-            setNotifications(prev =>
-                prev.map(n => n.id === notificationId ? { ...n, isRead: true } : n)
-            );
-        } catch (error) {
-            console.error('Error marking as read:', error);
-        }
-    };
-
-    const deleteNotification = async (notificationId) => {
-        Alert.alert(
-            'Delete Notification',
-            'Are you sure you want to delete this notification?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            await databaseService.deleteNotification(notificationId);
-                            setNotifications(prev => prev.filter(n => n.id !== notificationId));
-                        } catch (error) {
-                            console.error('Error deleting notification:', error);
-                        }
-                    },
-                },
-            ]
-        );
-    };
-
-    const getNotificationIcon = (type) => {
-        switch (type) {
-            case 'emergency': return { name: 'warning', color: colors.error };
-            case 'family': return { name: 'people', color: colors.success };
-            case 'system': return { name: 'information-circle', color: colors.info };
-            default: return { name: 'notifications', color: colors.primary };
-        }
-    };
-
-    const renderNotification = (notification) => {
-        const icon = getNotificationIcon(notification.type);
-        return (
-            <TouchableOpacity
-                key={notification.id}
-                style={[
-                    styles.notificationCard,
-                    {
-                        backgroundColor: notification.isRead ? colors.card : colors.primary + '10',
-                        borderRadius,
-                        ...shadows.small,
-                    },
-                ]}
-                onPress={() => markAsRead(notification.id)}
-            >
-                <View style={[styles.iconContainer, { backgroundColor: icon.color + '20' }]}>
-                    <Ionicons name={icon.name} size={24} color={icon.color} />
-                </View>
-                <View style={styles.contentContainer}>
-                    <Text style={[styles.title, { color: colors.text }]}>{notification.title}</Text>
-                    <Text style={[styles.message, { color: colors.gray }]}>{notification.message}</Text>
-                    <Text style={[styles.timestamp, { color: colors.gray }]}>
-                        {new Date(notification.timestamp).toLocaleString()}
-                    </Text>
-                </View>
-                <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={() => deleteNotification(notification.id)}
-                >
-                    <Ionicons name="trash-outline" size={20} color={colors.error} />
-                </TouchableOpacity>
-            </TouchableOpacity>
-        );
+    const getIcon = (type) => {
+        const icons = { emergency: 'warning', family: 'people', system: 'shield', info: 'information-circle' };
+        const colors_map = { emergency: '#EF4444', family: '#10B981', system: '#3B82F6', info: '#8B5CF6' };
+        return { icon: icons[type] || 'notifications', color: colors_map[type] || colors.primary };
     };
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
             <View style={[styles.header, { backgroundColor: colors.primary }]}>
-                <Text style={[styles.headerTitle, { color: colors.white }]}>Notifications</Text>
+                <Text style={styles.headerTitle}>Notifications</Text>
+                <Text style={styles.headerSubtitle}>{notifications.filter(n => n.unread).length} unread</Text>
             </View>
 
-            <ScrollView
-                style={styles.scrollView}
-                refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
-            >
-                {notifications.length > 0 ? (
-                    <View style={styles.notificationsList}>
-                        {notifications.map(renderNotification)}
+            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+                {notifications.length === 0 ? (
+                    <View style={styles.emptyState}>
+                        <Ionicons name="notifications-outline" size={64} color={colors.gray + '50'} />
+                        <Text style={[styles.emptyTitle, { color: colors.text }]}>No Notifications</Text>
+                        <Text style={[styles.emptySubtitle, { color: colors.gray }]}>You're all caught up!</Text>
                     </View>
                 ) : (
-                    <View style={styles.emptyContainer}>
-                        <Ionicons name="notifications-off-outline" size={64} color={colors.gray} />
-                        <Text style={[styles.emptyTitle, { color: colors.text }]}>No Notifications</Text>
-                        <Text style={[styles.emptySubtitle, { color: colors.gray }]}>
-                            You don't have any notifications yet
-                        </Text>
-                    </View>
+                    notifications.map((item) => {
+                        const { icon, color } = getIcon(item.type);
+                        return (
+                            <TouchableOpacity key={item.id} style={[styles.notifCard, { backgroundColor: item.unread ? color + '08' : colors.card, ...shadows.sm }]}>
+                                <View style={[styles.notifIcon, { backgroundColor: color + '15' }]}>
+                                    <Ionicons name={icon} size={22} color={color} />
+                                </View>
+                                <View style={styles.notifContent}>
+                                    <View style={styles.notifHeader}>
+                                        <Text style={[styles.notifTitle, { color: colors.text }]}>{item.title}</Text>
+                                        {item.unread && <View style={[styles.unreadDot, { backgroundColor: color }]} />}
+                                    </View>
+                                    <Text style={[styles.notifMessage, { color: colors.gray }]}>{item.message}</Text>
+                                    <Text style={[styles.notifTime, { color: colors.gray }]}>{item.time}</Text>
+                                </View>
+                            </TouchableOpacity>
+                        );
+                    })
                 )}
+                <View style={styles.bottomPadding} />
             </ScrollView>
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    header: {
-        padding: 24,
-        paddingTop: 48,
-    },
-    headerTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-    },
-    scrollView: {
-        flex: 1,
-    },
-    notificationsList: {
-        padding: 16,
-    },
-    notificationCard: {
-        flexDirection: 'row',
-        padding: 16,
-        marginBottom: 12,
-    },
-    iconContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    contentContainer: {
-        flex: 1,
-        marginLeft: 12,
-    },
-    title: {
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    message: {
-        fontSize: 14,
-        marginTop: 4,
-    },
-    timestamp: {
-        fontSize: 12,
-        marginTop: 8,
-    },
-    deleteButton: {
-        padding: 8,
-    },
-    emptyContainer: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 48,
-        marginTop: 48,
-    },
-    emptyTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        marginTop: 16,
-    },
-    emptySubtitle: {
-        fontSize: 14,
-        marginTop: 8,
-        textAlign: 'center',
-    },
+    container: { flex: 1 },
+    header: { paddingTop: 60, paddingBottom: 24, paddingHorizontal: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
+    headerTitle: { fontSize: 26, fontWeight: 'bold', color: '#fff' },
+    headerSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.85)', marginTop: 4 },
+    content: { flex: 1, padding: 16 },
+    emptyState: { alignItems: 'center', paddingVertical: 80 },
+    emptyTitle: { fontSize: 18, fontWeight: '600', marginTop: 16 },
+    emptySubtitle: { fontSize: 14, marginTop: 4 },
+    notifCard: { flexDirection: 'row', padding: 14, borderRadius: 16, marginBottom: 12 },
+    notifIcon: { width: 50, height: 50, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+    notifContent: { flex: 1, marginLeft: 14 },
+    notifHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    notifTitle: { fontSize: 15, fontWeight: '600' },
+    unreadDot: { width: 8, height: 8, borderRadius: 4 },
+    notifMessage: { fontSize: 13, marginTop: 4, lineHeight: 18 },
+    notifTime: { fontSize: 11, marginTop: 6 },
+    bottomPadding: { height: 30 },
 });
 
 export default NotificationScreen;

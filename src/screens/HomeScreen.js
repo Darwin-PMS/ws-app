@@ -5,6 +5,7 @@ import {
     StyleSheet,
     TouchableOpacity,
     ScrollView,
+    RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
@@ -13,242 +14,416 @@ import { useSecondaryMenu } from '../context/MenuContext';
 import BannerCarousel from '../components/BannerCarousel';
 import bannerService from '../services/bannerService';
 
+const ROLE_BASED_CONFIG = {
+    mother: {
+        title: 'Hello, Mom!',
+        subtitle: 'Your family is protected',
+        sections: {
+            quickActions: [
+                { id: 'sos', title: 'SOS', icon: 'warning', color: '#EF4444', screen: 'WomenSafety', urgent: true },
+                { id: 'helpline', title: 'Helpline', icon: 'call', color: '#DC2626', screen: 'EmergencyHelpline' },
+                { id: 'live', title: 'Live Share', icon: 'videocam', color: '#EC4899', screen: 'LiveShare' },
+            ],
+            features: [
+                { id: 'child-care', title: 'Child Care', subtitle: 'Monitor kids', icon: 'happy', color: '#F59E0B', screen: 'ChildCare' },
+                { id: 'family', title: 'Family', subtitle: 'Manage members', icon: 'people', color: '#8B5CF6', screen: 'Family' },
+                { id: 'women-safety', title: 'Safety', subtitle: 'SOS & tools', icon: 'shield-checkmark', color: '#EC4899', screen: 'WomenSafety' },
+                { id: 'safe-route', title: 'Safe Route', subtitle: 'Safe travels', icon: 'navigate', color: '#10B981', screen: 'SafeRoute' },
+                { id: 'home-auto', title: 'Home Control', subtitle: 'Smart home', icon: 'home', color: '#3B82F6', screen: 'HomeAutomation' },
+                { id: 'tutorials', title: 'Safety Tips', subtitle: 'Learn skills', icon: 'school', color: '#14B8A6', screen: 'SafetyTutorial' },
+                { id: 'ai-chat', title: 'AI Chat', subtitle: 'Assistant', icon: 'chatbubbles', color: '#8B5CF6', screen: 'AIChat' },
+                { id: 'settings', title: 'Settings', subtitle: 'Configure', icon: 'settings', color: '#6B7280', screen: 'Settings' },
+            ],
+            specialSection: { title: 'Family Overview', screen: 'FamilyLocation', icon: 'location' },
+        },
+    },
+    father: {
+        title: 'Hello, Dad!',
+        subtitle: 'Your family is protected',
+        sections: {
+            quickActions: [
+                { id: 'sos', title: 'SOS', icon: 'warning', color: '#EF4444', screen: 'WomenSafety', urgent: true },
+                { id: 'helpline', title: 'Helpline', icon: 'call', color: '#DC2626', screen: 'EmergencyHelpline' },
+                { id: 'live', title: 'Live Share', icon: 'videocam', color: '#EC4899', screen: 'LiveShare' },
+            ],
+            features: [
+                { id: 'family', title: 'Family', subtitle: 'Manage members', icon: 'people', color: '#8B5CF6', screen: 'Family' },
+                { id: 'location', title: 'Live Location', subtitle: 'Track family', icon: 'locate', color: '#3B82F6', screen: 'FamilyLocation' },
+                { id: 'women-safety', title: 'Safety', subtitle: 'SOS & tools', icon: 'shield-checkmark', color: '#EC4899', screen: 'WomenSafety' },
+                { id: 'safe-route', title: 'Safe Route', subtitle: 'Safe travels', icon: 'navigate', color: '#10B981', screen: 'SafeRoute' },
+                { id: 'home-auto', title: 'Home Control', subtitle: 'Smart home', icon: 'home', color: '#3B82F6', screen: 'HomeAutomation' },
+                { id: 'vision', title: 'Vision', subtitle: 'Analyze', icon: 'camera', color: '#8B5CF6', screen: 'Vision' },
+                { id: 'ai-chat', title: 'AI Chat', subtitle: 'Assistant', icon: 'chatbubbles', color: '#8B5CF6', screen: 'AIChat' },
+                { id: 'settings', title: 'Settings', subtitle: 'Configure', icon: 'settings', color: '#6B7280', screen: 'Settings' },
+            ],
+            specialSection: { title: 'Family Locations', screen: 'FamilyLocation', icon: 'location' },
+        },
+    },
+    daughter: {
+        title: 'Hello!',
+        subtitle: 'Stay safe and connected',
+        sections: {
+            quickActions: [
+                { id: 'sos', title: 'SOS', icon: 'warning', color: '#EF4444', screen: 'WomenSafety', urgent: true },
+                { id: 'helpline', title: 'Helpline', icon: 'call', color: '#DC2626', screen: 'EmergencyHelpline' },
+                { id: 'guardians', title: 'Guardians', icon: 'people', color: '#8B5CF6', screen: 'Family' },
+            ],
+            features: [
+                { id: 'women-safety', title: 'Women Safety', subtitle: 'SOS & emergency', icon: 'shield-checkmark', color: '#EC4899', screen: 'WomenSafety' },
+                { id: 'safe-route', title: 'Safe Route', subtitle: 'Get home safe', icon: 'navigate', color: '#10B981', screen: 'SafeRoute' },
+                { id: 'fake-call', title: 'Fake Call', subtitle: 'Quick escape', icon: 'call', color: '#F59E0B', screen: 'FakeCall' },
+                { id: 'ai-chat', title: 'AI Chat', subtitle: 'Talk to assistant', icon: 'chatbubbles', color: '#8B5CF6', screen: 'AIChat' },
+                { id: 'tutorials', title: 'Safety Tips', subtitle: 'Learn skills', icon: 'school', color: '#14B8A6', screen: 'SafetyTutorial' },
+                { id: 'laws', title: 'Laws', subtitle: 'Know your rights', icon: 'document-text', color: '#3B82F6', screen: 'SafetyLaw' },
+                { id: 'community', title: 'Community', subtitle: 'Support group', icon: 'people-circle', color: '#EC4899', screen: 'Community' },
+                { id: 'settings', title: 'Settings', subtitle: 'Configure', icon: 'settings', color: '#6B7280', screen: 'Settings' },
+            ],
+            specialSection: { title: 'Emergency Contacts', screen: 'EmergencyHelpline', icon: 'call' },
+        },
+    },
+    son: {
+        title: 'Hello!',
+        subtitle: 'Stay safe and connected',
+        sections: {
+            quickActions: [
+                { id: 'sos', title: 'SOS', icon: 'warning', color: '#EF4444', screen: 'WomenSafety', urgent: true },
+                { id: 'helpline', title: 'Helpline', icon: 'call', color: '#DC2626', screen: 'EmergencyHelpline' },
+                { id: 'guardians', title: 'Guardians', icon: 'people', color: '#8B5CF6', screen: 'Family' },
+            ],
+            features: [
+                { id: 'women-safety', title: 'Safety', subtitle: 'SOS & tools', icon: 'shield-checkmark', color: '#EC4899', screen: 'WomenSafety' },
+                { id: 'safe-route', title: 'Safe Route', subtitle: 'Get home safe', icon: 'navigate', color: '#10B981', screen: 'SafeRoute' },
+                { id: 'fake-call', title: 'Fake Call', subtitle: 'Quick escape', icon: 'call', color: '#F59E0B', screen: 'FakeCall' },
+                { id: 'ai-chat', title: 'AI Chat', subtitle: 'Talk to assistant', icon: 'chatbubbles', color: '#8B5CF6', screen: 'AIChat' },
+                { id: 'vision', title: 'Vision', subtitle: 'Analyze', icon: 'camera', color: '#8B5CF6', screen: 'Vision' },
+                { id: 'community', title: 'Community', subtitle: 'Support group', icon: 'people-circle', color: '#14B8A6', screen: 'Community' },
+                { id: 'laws', title: 'Laws', subtitle: 'Know your rights', icon: 'document-text', color: '#3B82F6', screen: 'SafetyLaw' },
+                { id: 'settings', title: 'Settings', subtitle: 'Configure', icon: 'settings', color: '#6B7280', screen: 'Settings' },
+            ],
+            specialSection: { title: 'Emergency Contacts', screen: 'EmergencyHelpline', icon: 'call' },
+        },
+    },
+    grandmother: {
+        title: 'Hello!',
+        subtitle: 'Stay connected with family',
+        sections: {
+            quickActions: [
+                { id: 'sos', title: 'SOS', icon: 'warning', color: '#EF4444', screen: 'WomenSafety', urgent: true },
+                { id: 'helpline', title: 'Helpline', icon: 'call', color: '#DC2626', screen: 'EmergencyHelpline' },
+                { id: 'family', title: 'Family', icon: 'people', color: '#8B5CF6', screen: 'Family' },
+            ],
+            features: [
+                { id: 'women-safety', title: 'Women Safety', subtitle: 'SOS & emergency', icon: 'shield-checkmark', color: '#EC4899', screen: 'WomenSafety' },
+                { id: 'emergency', title: 'Emergency', subtitle: 'Quick help', icon: 'alert-circle', color: '#EF4444', screen: 'EmergencyHelpline' },
+                { id: 'family', title: 'Family', subtitle: 'Stay connected', icon: 'people', color: '#8B5CF6', screen: 'Family' },
+                { id: 'fake-call', title: 'Fake Call', subtitle: 'Feel safe', icon: 'call', color: '#F59E0B', screen: 'FakeCall' },
+                { id: 'fake-battery', title: 'Fake Battery', subtitle: 'Quick exit', icon: 'battery-dead', color: '#10B981', screen: 'FakeBatteryDeath' },
+                { id: 'ai-chat', title: 'AI Chat', subtitle: 'Assistant', icon: 'chatbubbles', color: '#8B5CF6', screen: 'AIChat' },
+                { id: 'community', title: 'Community', subtitle: 'Support group', icon: 'people-circle', color: '#14B8A6', screen: 'Community' },
+                { id: 'settings', title: 'Settings', subtitle: 'Configure', icon: 'settings', color: '#6B7280', screen: 'Settings' },
+            ],
+            specialSection: { title: 'Quick Connect', screen: 'Family', icon: 'call' },
+        },
+    },
+    grandfather: {
+        title: 'Hello!',
+        subtitle: 'Stay connected with family',
+        sections: {
+            quickActions: [
+                { id: 'sos', title: 'SOS', icon: 'warning', color: '#EF4444', screen: 'WomenSafety', urgent: true },
+                { id: 'helpline', title: 'Helpline', icon: 'call', color: '#DC2626', screen: 'EmergencyHelpline' },
+                { id: 'family', title: 'Family', icon: 'people', color: '#8B5CF6', screen: 'Family' },
+            ],
+            features: [
+                { id: 'women-safety', title: 'Safety', subtitle: 'SOS & tools', icon: 'shield-checkmark', color: '#EC4899', screen: 'WomenSafety' },
+                { id: 'emergency', title: 'Emergency', subtitle: 'Quick help', icon: 'alert-circle', color: '#EF4444', screen: 'EmergencyHelpline' },
+                { id: 'family', title: 'Family', subtitle: 'Stay connected', icon: 'people', color: '#8B5CF6', screen: 'Family' },
+                { id: 'safe-route', title: 'Safe Route', subtitle: 'Travel safe', icon: 'navigate', color: '#10B981', screen: 'SafeRoute' },
+                { id: 'fake-call', title: 'Fake Call', subtitle: 'Feel safe', icon: 'call', color: '#F59E0B', screen: 'FakeCall' },
+                { id: 'ai-chat', title: 'AI Chat', subtitle: 'Assistant', icon: 'chatbubbles', color: '#8B5CF6', screen: 'AIChat' },
+                { id: 'vision', title: 'Vision', subtitle: 'Analyze', icon: 'camera', color: '#8B5CF6', screen: 'Vision' },
+                { id: 'settings', title: 'Settings', subtitle: 'Configure', icon: 'settings', color: '#6B7280', screen: 'Settings' },
+            ],
+            specialSection: { title: 'Quick Connect', screen: 'Family', icon: 'call' },
+        },
+    },
+    guardian: {
+        title: 'Hello, Guardian!',
+        subtitle: 'Protected ones are safe',
+        sections: {
+            quickActions: [
+                { id: 'sos', title: 'SOS', icon: 'warning', color: '#EF4444', screen: 'WomenSafety', urgent: true },
+                { id: 'helpline', title: 'Helpline', icon: 'call', color: '#DC2626', screen: 'EmergencyHelpline' },
+                { id: 'live', title: 'Live Share', icon: 'videocam', color: '#EC4899', screen: 'LiveShare' },
+            ],
+            features: [
+                { id: 'child-care', title: 'Child Care', subtitle: 'Monitor kids', icon: 'happy', color: '#F59E0B', screen: 'ChildCare' },
+                { id: 'family', title: 'Family', subtitle: 'Manage members', icon: 'people', color: '#8B5CF6', screen: 'Family' },
+                { id: 'location', title: 'Live Location', subtitle: 'Track family', icon: 'locate', color: '#3B82F6', screen: 'FamilyLocation' },
+                { id: 'women-safety', title: 'Safety', subtitle: 'SOS & tools', icon: 'shield-checkmark', color: '#EC4899', screen: 'WomenSafety' },
+                { id: 'safe-route', title: 'Safe Route', subtitle: 'Safe travels', icon: 'navigate', color: '#10B981', screen: 'SafeRoute' },
+                { id: 'tutorials', title: 'Safety Tips', subtitle: 'Learn skills', icon: 'school', color: '#14B8A6', screen: 'SafetyTutorial' },
+                { id: 'ai-chat', title: 'AI Chat', subtitle: 'Assistant', icon: 'chatbubbles', color: '#8B5CF6', screen: 'AIChat' },
+                { id: 'settings', title: 'Settings', subtitle: 'Configure', icon: 'settings', color: '#6B7280', screen: 'Settings' },
+            ],
+            specialSection: { title: 'Protected Members', screen: 'FamilyLocation', icon: 'location' },
+        },
+    },
+    other: {
+        title: 'Hello!',
+        subtitle: 'Welcome to your safety hub',
+        sections: {
+            quickActions: [
+                { id: 'sos', title: 'SOS', icon: 'warning', color: '#EF4444', screen: 'WomenSafety', urgent: true },
+                { id: 'helpline', title: 'Helpline', icon: 'call', color: '#DC2626', screen: 'EmergencyHelpline' },
+                { id: 'live', title: 'Live Share', icon: 'videocam', color: '#EC4899', screen: 'LiveShare' },
+            ],
+            features: [
+                { id: 'women-safety', title: 'Women Safety', subtitle: 'SOS & emergency', icon: 'shield-checkmark', color: '#EC4899', screen: 'WomenSafety' },
+                { id: 'family', title: 'Family', subtitle: 'Manage members', icon: 'people', color: '#8B5CF6', screen: 'Family' },
+                { id: 'tutorials', title: 'Safety Tips', subtitle: 'Learn skills', icon: 'school', color: '#10B981', screen: 'SafetyTutorial' },
+                { id: 'laws', title: 'Laws', subtitle: 'Know rights', icon: 'document-text', color: '#14B8A6', screen: 'SafetyLaw' },
+                { id: 'ai-chat', title: 'AI Chat', subtitle: 'Assistant', icon: 'chatbubbles', color: '#8B5CF6', screen: 'AIChat' },
+                { id: 'vision', title: 'Vision', subtitle: 'Analyze', icon: 'camera', color: '#8B5CF6', screen: 'Vision' },
+                { id: 'community', title: 'Community', subtitle: 'Support', icon: 'people-circle', color: '#14B8A6', screen: 'Community' },
+                { id: 'settings', title: 'Settings', subtitle: 'Configure', icon: 'settings', color: '#6B7280', screen: 'Settings' },
+            ],
+            specialSection: { title: 'Emergency Help', screen: 'EmergencyHelpline', icon: 'warning' },
+        },
+    },
+    admin: {
+        title: 'Admin Dashboard',
+        subtitle: 'System management & monitoring',
+        sections: {
+            quickActions: [
+                { id: 'users', title: 'Users', icon: 'people', color: '#3B82F6', screen: 'UserManagement', isAdmin: true },
+                { id: 'families', title: 'Families', icon: 'people-circle', color: '#8B5CF6', screen: 'FamilyManagement', isAdmin: true },
+                { id: 'sos', title: 'SOS Alerts', icon: 'warning', color: '#EF4444', screen: 'SOSManagement', isAdmin: true },
+            ],
+            features: [
+                { id: 'admin-dashboard', title: 'Dashboard', subtitle: 'Overview & stats', icon: 'grid', color: '#3B82F6', screen: 'AdminDashboard', isAdmin: true },
+                { id: 'user-mgmt', title: 'Users', subtitle: 'Manage all users', icon: 'people-outline', color: '#3B82F6', screen: 'UserManagement', isAdmin: true },
+                { id: 'family-mgmt', title: 'Families', subtitle: 'Manage families', icon: 'people-circle-outline', color: '#8B5CF6', screen: 'FamilyManagement', isAdmin: true },
+                { id: 'sos-alerts', title: 'SOS Alerts', subtitle: 'Monitor alerts', icon: 'alert-circle-outline', color: '#EF4444', screen: 'SOSManagement', isAdmin: true },
+                { id: 'live-tracking', title: 'Live Tracking', subtitle: 'Track users', icon: 'locate-outline', color: '#10B981', screen: 'AdminLiveTracking', isAdmin: true },
+                { id: 'ai-chat', title: 'AI Chat', subtitle: 'Assistant', icon: 'chatbubbles', color: '#8B5CF6', screen: 'AIChat' },
+                { id: 'women-safety', title: 'Women Safety', subtitle: 'Safety tools', icon: 'shield-checkmark', color: '#EC4899', screen: 'WomenSafety' },
+                { id: 'settings', title: 'Settings', subtitle: 'Configure', icon: 'settings', color: '#6B7280', screen: 'Settings' },
+            ],
+            specialSection: { title: 'Admin Panel', screen: 'AdminDashboard', icon: 'shield-checkmark', isAdmin: true },
+        },
+    },
+};
+
+const DEFAULT_CONFIG = {
+    title: 'Hello!',
+    subtitle: 'Stay safe today',
+    sections: {
+        quickActions: [
+            { id: 'sos', title: 'SOS', icon: 'warning', color: '#EF4444', screen: 'WomenSafety', urgent: true },
+            { id: 'helpline', title: 'Helpline', icon: 'call', color: '#DC2626', screen: 'EmergencyHelpline' },
+            { id: 'live', title: 'Live Share', icon: 'videocam', color: '#EC4899', screen: 'LiveShare' },
+        ],
+        features: [
+            { id: 'women-safety', title: 'Women Safety', subtitle: 'SOS & emergency', icon: 'shield-checkmark', color: '#EC4899', screen: 'WomenSafety' },
+            { id: 'family', title: 'Family', subtitle: 'Manage members', icon: 'people', color: '#8B5CF6', screen: 'Family' },
+            { id: 'tutorials', title: 'Safety Tips', subtitle: 'Learn skills', icon: 'school', color: '#10B981', screen: 'SafetyTutorial' },
+            { id: 'laws', title: 'Laws', subtitle: 'Know rights', icon: 'document-text', color: '#14B8A6', screen: 'SafetyLaw' },
+            { id: 'ai-chat', title: 'AI Chat', subtitle: 'Assistant', icon: 'chatbubbles', color: '#8B5CF6', screen: 'AIChat' },
+            { id: 'vision', title: 'Vision', subtitle: 'Analyze', icon: 'camera', color: '#8B5CF6', screen: 'Vision' },
+            { id: 'community', title: 'Community', subtitle: 'Support', icon: 'people-circle', color: '#14B8A6', screen: 'Community' },
+            { id: 'settings', title: 'Settings', subtitle: 'Configure', icon: 'settings', color: '#6B7280', screen: 'Settings' },
+        ],
+    },
+};
+
 const HomeScreen = ({ navigation }) => {
-    const { userName, isLoggedIn } = useApp();
+    const { userName, isLoggedIn, userRole } = useApp();
     const { colors, spacing, borderRadius, shadows } = useTheme();
     const { items: menuItems, isLoading: menuLoading, isInitialized: menuInitialized } = useSecondaryMenu();
     const [banners, setBanners] = useState([]);
-    const [bannersLoading, setBannersLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
 
-    useEffect(() => {
-        const loadBanners = async () => {
-            try {
-                const result = await bannerService.getBanners();
-                if (result.success && result.banners) {
-                    setBanners(result.banners);
-                }
-            } catch (error) {
-                console.log('Error loading banners:', error);
-            } finally {
-                setBannersLoading(false);
-            }
-        };
+    const roleConfig = ROLE_BASED_CONFIG[userRole] || DEFAULT_CONFIG;
+
+    useEffect(() => { loadBanners(); }, []);
+
+    const loadBanners = async () => {
+        try {
+            const result = await bannerService.getBanners();
+            if (result && result.success && result.banners) setBanners(result.banners);
+        } catch (error) { console.log('Error loading banners:', error); }
+    };
+
+    const onRefresh = () => {
+        setRefreshing(true);
         loadBanners();
-    }, []);
+        setTimeout(() => setRefreshing(false), 1000);
+    };
 
-    // Helper function to handle navigation with nested navigator support
     const handleNavigation = (screen) => {
-        // All screens in the 'More' (CoreServicesStack) nested navigator
         const nestedScreens = [
-            // Core Services
             'Vision', 'ThoughtGenerator', 'WomenSafety', 'Family', 'FamilyLocation', 
             'Settings', 'CylinderVerification', 'SafetyMap', 'FakeCall', 'FakeBatteryDeath', 
             'SafeRoute', 'SpeechToText', 'TextToSpeech', 'AISafetyWorkshop', 'SmartLocation', 
             'LiveShare', 'LiveReceiver', 'HomeAutomation', 'ChildCare', 'SafetyTutorial', 
             'SafetyNews', 'SafetyLaw', 'EmergencyHelpline', 'Grievance', 'Profile',
-            // Additional screens
             'Models', 'FamilyDetails', 'CreateFamily', 'AddMember', 'RelationshipEditor',
             'SafetyTutorialDetail', 'SafetyNewsDetail', 'SafetyLawDetail',
             'FakeMessageAlert', 'QRScreen', 'BehaviorPattern', 'VoiceKeyword', 'VolumeButton',
             'Logs', 'LiveTracking', 'PrivacyPolicy', 'TermsOfService', 'Community',
-            // Home tabs
             'Home', 'Notifications', 'AIChat', 'More'
         ];
-
-        if (nestedScreens.includes(screen)) {
+        const adminScreens = [
+            'AdminDashboard', 'UserManagement', 'UserDetail', 'FamilyManagement', 
+            'FamilyDetail', 'SOSManagement', 'AdminLiveTracking'
+        ];
+        
+        if (adminScreens.includes(screen)) {
+            navigation.navigate('Admin', { screen });
+        } else if (screen === 'Admin') {
+            navigation.navigate('Admin');
+        } else if (nestedScreens.includes(screen)) {
             navigation.navigate('More', { screen });
         } else {
             navigation.navigate(screen);
         }
     };
 
-    // Transform menu items to features - use backend data if available
+    const quickActions = roleConfig.sections.quickActions;
+
     const features = useMemo(() => {
-        if (menuInitialized && !menuLoading && menuItems && menuItems.length > 0) {
-            // Transform backend menu items to feature format
-            return menuItems.slice(0, 6).map(item => ({
+        if (menuInitialized && !menuLoading && menuItems?.length > 0) {
+            return menuItems.slice(0, 8).map(item => ({
                 id: item.id,
                 title: item.label || item.name,
-                subtitle: item.subtitle || item.category || '',
+                subtitle: item.subtitle || '',
                 icon: item.icon || 'apps',
                 color: item.bgColor || item.bg_color || colors.primary,
-                screen: item.route || item.screen || '',
+                screen: item.route ? item.route.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('') : '',
             }));
         }
-        // Fallback to default features (matching menus.sql)
-        return [
-            // Emergency & Safety
-            { id: 'women-safety', title: 'Women Safety', subtitle: 'SOS & emergency contacts', icon: 'shield-checkmark', color: '#EC4899', screen: 'WomenSafety' },
-            { id: 'sos', title: 'SOS', subtitle: 'Emergency assistance', icon: 'alert-circle', color: '#EF4444', screen: 'SOS' },
-            { id: 'emergency-helpline', title: 'Helpline', subtitle: 'Emergency hotlines', icon: 'call', color: '#DC2626', screen: 'EmergencyHelpline' },
-            { id: 'live-share', title: 'Live Share', subtitle: 'Share live location', icon: 'videocam', color: '#EF4444', screen: 'LiveShare' },
-            // Family
-            { id: 'family', title: 'Family', subtitle: 'Manage family members', icon: 'people', color: '#8B5CF6', screen: 'Family' },
-            { id: 'family-location', title: 'Location', subtitle: 'Track family', icon: 'location', color: '#06B6D4', screen: 'FamilyLocation' },
-            { id: 'childcare', title: 'Child Care', subtitle: 'Tips & guidance', icon: 'happy', color: '#10B981', screen: 'ChildCare' },
-            // AI Features
-            { id: 'ai-chat', title: 'AI Chat', subtitle: 'Chat with AI', icon: 'chatbubbles', color: colors.primary, screen: 'AIChat' },
-            { id: 'vision', title: 'Vision', subtitle: 'Analyze images', icon: 'camera', color: colors.secondary, screen: 'Vision' },
-            { id: 'thought', title: 'Thoughts', subtitle: 'Generate ideas', icon: 'sparkles', color: colors.accent, screen: 'ThoughtGenerator' },
-            { id: 'speech-text', title: 'Speech to Text', subtitle: 'Transcribe audio', icon: 'mic', color: '#10B981', screen: 'SpeechToText' },
-            { id: 'text-speech', title: 'Text to Speech', subtitle: 'Convert text to speech', icon: 'volume-high', color: '#F59E0B', screen: 'TextToSpeech' },
-            // Smart Features
-            { id: 'cylinder', title: 'Cylinder', subtitle: 'Verify gas cylinder', icon: 'flame', color: '#F97316', screen: 'CylinderVerification' },
-            { id: 'home-automation', title: 'Smart Home', subtitle: 'Control devices', icon: 'home', color: '#3B82F6', screen: 'HomeAutomation' },
-            { id: 'safe-route', title: 'Safe Route', subtitle: 'Find safest route', icon: 'navigate', color: '#3B82F6', screen: 'SafeRoute' },
-            { id: 'smart-location', title: 'Smart Location', subtitle: 'Advanced features', icon: 'location', color: '#10B981', screen: 'SmartLocation' },
-            // Safety Info
-            { id: 'safety-tips', title: 'Safety Tips', subtitle: 'Guidelines & laws', icon: 'shield-checkmark', color: '#10B981', screen: 'SafetyTutorial' },
-            { id: 'safety-laws', title: 'Laws', subtitle: 'Know your rights', icon: 'document-text', color: '#059669', screen: 'SafetyLaw' },
-            { id: 'safety-news', title: 'News', subtitle: 'Latest updates', icon: 'newspaper', color: '#14B8A6', screen: 'SafetyNews' },
-            // Fake Features
-            { id: 'fake-call', title: 'Fake Call', subtitle: 'Simulate calls', icon: 'call', color: '#F59E0B', screen: 'FakeCall' },
-            // Settings
-            { id: 'settings', title: 'Settings', subtitle: 'App configuration', icon: 'settings', color: '#6B7280', screen: 'Settings' },
-            { id: 'profile', title: 'Profile', subtitle: 'User profile', icon: 'person', color: '#8B5CF6', screen: 'Profile' },
-        ];
-    }, [menuItems, menuLoading, menuInitialized, colors]);
+        return roleConfig.sections.features.map(f => ({
+            ...f,
+            color: f.color === (colors?.primary || '#8B5CF6') ? colors.primary : f.color,
+        }));
+    }, [menuItems, menuLoading, menuInitialized, colors, roleConfig]);
 
-    const quickActions = [
-        { id: 'profile', title: 'Profile', icon: 'person', screen: 'Profile' },
-        { id: 'settings', title: 'Settings', icon: 'settings', screen: 'Settings' },
-        { id: 'notifications', title: 'Alerts', icon: 'notifications', screen: 'Notifications' },
-    ];
+    const firstName = userName?.split(' ')[0] || 'User';
+    const greetingTitle = roleConfig.title.replace('Hello,', 'Hello').includes(firstName) 
+        ? roleConfig.title 
+        : `${roleConfig.title.replace('Hello', '').trim()}, ${firstName}!`;
 
     return (
-        <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+        <ScrollView style={[styles.container, { backgroundColor: colors.background }]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}>
             <View style={[styles.header, { backgroundColor: colors.primary }]}>
-                <Text style={[styles.greeting, { color: colors.white }]}>
-                    Hello, {userName || 'User'}!
-                </Text>
-                <Text style={[styles.subGreeting, { color: colors.white + 'CC' }]}>
-                    Stay safe and connected
-                </Text>
-            </View>
-
-            {/* Banner Carousel at Top */}
-            <View style={styles.carouselContainer}>
-                <BannerCarousel 
-                    banners={banners} 
-                    height={140} 
-                    autoPlay={true} 
-                    autoPlayInterval={4000} 
-                    onPress={(banner) => {
-                        if (banner.cta_action) {
-                            handleNavigation(banner.cta_action);
-                        }
-                    }}
-                />
+                <View style={styles.headerTop}>
+                    <View>
+                        <Text style={styles.greeting}>{greetingTitle}</Text>
+                        <Text style={styles.subGreeting}>{roleConfig.subtitle}</Text>
+                    </View>
+                    <TouchableOpacity style={styles.profileBtn} onPress={() => handleNavigation('Profile')}>
+                        <Ionicons name="person" size={24} color={colors.white} />
+                    </TouchableOpacity>
+                </View>
             </View>
 
             <View style={styles.content}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Features</Text>
+                {banners.length > 0 && (
+                    <View style={styles.carouselSection}>
+                        <BannerCarousel banners={banners} height={160} autoPlay={true} autoPlayInterval={5000} onPress={(banner) => banner.cta_action && handleNavigation(banner.cta_action)} />
+                    </View>
+                )}
+
+                {roleConfig.sections.specialSection && (
+                    <TouchableOpacity
+                        style={[styles.specialSection, { backgroundColor: colors.primary + '10' }]}
+                        onPress={() => handleNavigation(roleConfig.sections.specialSection.screen)}
+                    >
+                        <View style={[styles.specialIcon, { backgroundColor: colors.primary + '20' }]}>
+                            <Ionicons name={roleConfig.sections.specialSection.icon} size={24} color={colors.primary} />
+                        </View>
+                        <Text style={[styles.specialTitle, { color: colors.primary }]}>{roleConfig.sections.specialSection.title}</Text>
+                        <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+                    </TouchableOpacity>
+                )}
+
+                <View style={styles.quickActions}>
+                    {quickActions.map((action) => (
+                        <TouchableOpacity
+                            key={action.id}
+                            style={[styles.quickActionCard, { backgroundColor: action.color }]}
+                            onPress={() => handleNavigation(action.screen)}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name={action.icon} size={28} color="#fff" />
+                            <Text style={styles.quickActionText}>{action.title}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Services</Text>
                 <View style={styles.featuresGrid}>
                     {features.map((feature) => (
                         <TouchableOpacity
                             key={feature.id}
-                            style={[styles.featureCard, { backgroundColor: colors.card, borderRadius, ...shadows.small }]}
+                            style={[styles.featureCard, { backgroundColor: colors.card, borderRadius: borderRadius.xl, ...shadows.md }]}
                             onPress={() => handleNavigation(feature.screen)}
+                            activeOpacity={0.85}
                         >
-                            <View style={[styles.iconContainer, { backgroundColor: feature.color + '20' }]}>
-                                <Ionicons name={feature.icon} size={28} color={feature.color} />
+                            <View style={[styles.featureIcon, { backgroundColor: feature.color + '20' }]}>
+                                <Ionicons name={feature.icon} size={26} color={feature.color} />
                             </View>
                             <Text style={[styles.featureTitle, { color: colors.text }]}>{feature.title}</Text>
-                            <Text style={[styles.featureSubtitle, { color: colors.gray }]}>{feature.subtitle}</Text>
+                            <Text style={[styles.featureSubtitle, { color: colors.textSecondary }]}>{feature.subtitle}</Text>
                         </TouchableOpacity>
                     ))}
                 </View>
 
-                <Text style={[styles.sectionTitle, { color: colors.text, marginTop: spacing.lg }]}>Quick Actions</Text>
-                <View style={[styles.quickActions, { backgroundColor: colors.card, borderRadius, ...shadows.small }]}>
-                    {quickActions.map((action, index) => (
-                        <TouchableOpacity
-                            key={action.id}
-                            style={[styles.actionItem, index < quickActions.length - 1 && styles.actionBorder, { borderColor: colors.border }]}
-                            onPress={() => handleNavigation(action.screen)}
-                        >
-                            <Ionicons name={action.icon} size={24} color={colors.primary} />
-                            <Text style={[styles.actionText, { color: colors.text }]}>{action.title}</Text>
-                            <Ionicons name="chevron-forward" size={20} color={colors.gray} />
-                        </TouchableOpacity>
-                    ))}
-                </View>
+                <TouchableOpacity
+                    style={[styles.emergencyBanner, { backgroundColor: colors.error + '15' }]}
+                    onPress={() => handleNavigation('EmergencyHelpline')}
+                >
+                    <View style={[styles.emergencyIcon, { backgroundColor: colors.error + '20' }]}>
+                        <Ionicons name="warning" size={24} color={colors.error} />
+                    </View>
+                    <View style={styles.emergencyContent}>
+                        <Text style={[styles.emergencyTitle, { color: colors.error }]}>Need Help?</Text>
+                        <Text style={[styles.emergencySubtitle, { color: colors.textSecondary }]}>Access emergency helplines and support</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={colors.error} />
+                </TouchableOpacity>
             </View>
         </ScrollView>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    header: {
-        padding: 24,
-        paddingTop: 48,
-        borderBottomLeftRadius: 24,
-        borderBottomRightRadius: 24,
-    },
-    greeting: {
-        fontSize: 28,
-        fontWeight: 'bold',
-    },
-    subGreeting: {
-        fontSize: 16,
-        marginTop: 4,
-    },
-    content: {
-        padding: 16,
-    },
-    carouselContainer: {
-        marginTop: -8,
-    },
-    sectionTitle: {
-        fontSize: 20,
-        fontWeight: '600',
-        marginBottom: 16,
-    },
-    featuresGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 12,
-    },
-    featureCard: {
-        width: '47%',
-        padding: 16,
-        alignItems: 'center',
-    },
-    iconContainer: {
-        width: 56,
-        height: 56,
-        borderRadius: 16,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    featureTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        marginBottom: 4,
-    },
-    featureSubtitle: {
-        fontSize: 12,
-    },
-    quickActions: {
-        overflow: 'hidden',
-    },
-    actionItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-    },
-    actionBorder: {
-        borderBottomWidth: 1,
-    },
-    actionText: {
-        flex: 1,
-        fontSize: 16,
-        marginLeft: 12,
-    },
+    container: { flex: 1 },
+    header: { paddingTop: 50, paddingBottom: 24, paddingHorizontal: 20, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
+    headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    greeting: { fontSize: 26, fontWeight: 'bold', color: '#fff' },
+    subGreeting: { fontSize: 14, color: 'rgba(255,255,255,0.85)', marginTop: 4 },
+    profileBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+    content: { padding: 16 },
+    carouselSection: { marginBottom: 16, marginTop: -12 },
+    specialSection: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 16, marginBottom: 16 },
+    specialIcon: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+    specialTitle: { flex: 1, marginLeft: 12, fontSize: 16, fontWeight: '600' },
+    quickActions: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+    quickActionCard: { flex: 1, alignItems: 'center', padding: 14, borderRadius: 16 },
+    quickActionText: { color: '#fff', fontSize: 11, fontWeight: '600', marginTop: 6, textAlign: 'center' },
+    sectionTitle: { fontSize: 18, fontWeight: '700', marginBottom: 14 },
+    featuresGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 20 },
+    featureCard: { width: '47%', padding: 16, alignItems: 'center' },
+    featureIcon: { width: 52, height: 52, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
+    featureTitle: { fontSize: 14, fontWeight: '600', marginBottom: 2 },
+    featureSubtitle: { fontSize: 11, textAlign: 'center' },
+    emergencyBanner: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 16, marginBottom: 100 },
+    emergencyIcon: { width: 48, height: 48, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+    emergencyContent: { flex: 1, marginLeft: 12 },
+    emergencyTitle: { fontSize: 16, fontWeight: '600' },
+    emergencySubtitle: { fontSize: 12, marginTop: 2 },
 });
 
 export default HomeScreen;
