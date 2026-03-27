@@ -55,6 +55,7 @@ import LiveReceiverScreen from '../screens/LiveReceiverScreen';
 import CommunityScreen from '../screens/CommunityScreen';
 import AppGuideScreen from '../screens/AppGuideScreen';
 import AboutAppScreen from '../screens/AboutAppScreen';
+import HelpScreen from '../screens/HelpScreen';
 import { TouchableOpacity } from 'react-native';
 
 // Import Admin screens
@@ -395,6 +396,11 @@ const CoreServicesStack = ({ navigation }) => {
                 name="AboutApp"
                 component={AboutAppScreen}
                 options={{ title: 'About App' }}
+            />
+            <Stack.Screen
+                name="HelpScreen"
+                component={HelpScreen}
+                options={{ title: 'Help & Support' }}
             />
         </Stack.Navigator>
     );
