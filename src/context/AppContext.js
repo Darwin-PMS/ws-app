@@ -4,6 +4,7 @@ import databaseService from '../services/databaseService';
 import { apiClient } from '../services/api/client';
 import { mobileApi } from '../services/api/mobileApi';
 import { getSessionData } from '../utils/deviceInfo';
+import globalSocketManager from '../services/globalSocketManager';
 
 // User Roles
 export const USER_ROLES = {
@@ -281,6 +282,11 @@ export const AppProvider = ({ children }) => {
             // Sync tokens with all API clients
             databaseService.setTokens(token, refresh);
             await apiClient.setTokens(token, refresh);
+            
+            // Initialize global socket for real-time communication
+            if (loggedIn && token) {
+                globalSocketManager.initialize(token);
+            }
         } catch (error) {
             console.error('Error saving auth tokens:', error);
         }
@@ -317,6 +323,9 @@ export const AppProvider = ({ children }) => {
             // Clear tokens from all API clients
             databaseService.clearTokens();
             await apiClient.clearTokens();
+            
+            // Disconnect global socket
+            globalSocketManager.disconnect();
         } catch (error) {
             console.error('Error in performLogout:', error);
         }

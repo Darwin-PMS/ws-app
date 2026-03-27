@@ -2,7 +2,8 @@
 // API calls for banners
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { apiClient, ENDPOINTS } from './api/client';
+import { apiClient } from './api/client';
+import { ENDPOINTS } from './api/mobileApi';
 
 const BANNERS_CACHE_KEY = '@app_banners_cache';
 const BANNERS_CACHE_TIME_KEY = '@app_banners_cache_time';

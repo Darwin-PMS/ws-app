@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
     View,
     Text,
@@ -10,8 +10,11 @@ import {
     KeyboardAvoidingView,
     Platform,
     RefreshControl,
-    Modal,
     FlatList,
+    Keyboard,
+    PanResponder,
+    Dimensions,
+    Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
@@ -57,14 +60,20 @@ const GrievanceScreen = ({ navigation }) => {
     const [grievances, setGrievances] = useState([]);
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+
     const [selectedGrievance, setSelectedGrievance] = useState(null);
-    const [showDetailsModal, setShowDetailsModal] = useState(false);
+    const [messages, setMessages] = useState([]);
+    const [messageText, setMessageText] = useState('');
+    const [sendingMessage, setSendingMessage] = useState(false);
+    const [loadingMessages, setLoadingMessages] = useState(false);
 
     const [complaintType, setComplaintType] = useState('');
     const [description, setDescription] = useState('');
     const [title, setTitle] = useState('');
     const [priority, setPriority] = useState('medium');
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const flatListRef = useRef(null);
 
     const fetchGrievances = useCallback(async () => {
         try {
@@ -118,7 +127,7 @@ const GrievanceScreen = ({ navigation }) => {
             if (response.success) {
                 Alert.alert(
                     'Complaint Submitted',
-                    `Your complaint has been submitted.\n\nTicket ID: ${response.data?.id?.slice(-8) || 'N/A'}\n\nStatus: ${statusLabels[response.data?.status] || 'Pending'}\n\nWe will acknowledge within 24 hours and resolve within 15 days.`,
+                    `Your complaint has been submitted.\n\nCase ID: ${response.data?.case_id || 'N/A'}\n\nStatus: ${statusLabels[response.data?.status] || 'Pending'}\n\nWe will acknowledge within 24 hours and resolve within 15 days.`,
                     [
                         {
                             text: 'OK',
@@ -143,46 +152,241 @@ const GrievanceScreen = ({ navigation }) => {
         }
     };
 
-    const openGrievanceDetails = (grievance) => {
+    const openGrievanceDetails = async (grievance) => {
         setSelectedGrievance(grievance);
-        setShowDetailsModal(true);
+        setLoadingMessages(true);
+        
+        try {
+            const response = await grievanceService.getGrievanceWithMessages(grievance.id);
+            if (response.success) {
+                setMessages(response.data?.messages || []);
+            }
+        } catch (error) {
+            console.error('Error fetching messages:', error);
+            setMessages([]);
+        } finally {
+            setLoadingMessages(false);
+        }
+    };
+
+    const handleSendMessage = async () => {
+        if (!messageText.trim() || !selectedGrievance) return;
+
+        Keyboard.dismiss();
+        setSendingMessage(true);
+        const textToSend = messageText.trim();
+        setMessageText('');
+
+        try {
+            const response = await grievanceService.sendMessage(selectedGrievance.id, textToSend);
+            if (response.success) {
+                setMessages(prev => [...prev, response.data]);
+                setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+            } else {
+                Alert.alert('Error', 'Failed to send message');
+                setMessageText(textToSend);
+            }
+        } catch (error) {
+            console.error('Error sending message:', error);
+            Alert.alert('Error', 'Failed to send message. Please try again.');
+            setMessageText(textToSend);
+        } finally {
+            setSendingMessage(false);
+        }
+    };
+
+    const SwipeableGrievanceCard = ({ item, onPress, onViewDetails, onDelete }) => {
+        const swipeAnim = useRef(new Animated.Value(0)).current;
+        const isSwipeOpen = useRef(false);
+
+        const panResponder = useRef(
+            PanResponder.create({
+                onMoveShouldSetPanResponder: (_, gestureState) => {
+                    return Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dy) < 20;
+                },
+                onPanResponderMove: (_, gestureState) => {
+                    if (gestureState.dx < 0) {
+                        swipeAnim.setValue(Math.max(gestureState.dx, -160));
+                    }
+                },
+                onPanResponderRelease: (_, gestureState) => {
+                    if (gestureState.dx < -50) {
+                        Animated.spring(swipeAnim, {
+                            toValue: -160,
+                            useNativeDriver: true,
+                        }).start();
+                        isSwipeOpen.current = true;
+                    } else {
+                        Animated.spring(swipeAnim, {
+                            toValue: 0,
+                            useNativeDriver: true,
+                        }).start();
+                        isSwipeOpen.current = false;
+                    }
+                },
+            })
+        ).current;
+
+        const closeSwipe = () => {
+            Animated.spring(swipeAnim, {
+                toValue: 0,
+                useNativeDriver: true,
+            }).start();
+            isSwipeOpen.current = false;
+        };
+
+        const handlePress = () => {
+            if (isSwipeOpen.current) {
+                closeSwipe();
+            } else {
+                onPress(item);
+            }
+        };
+
+        return (
+            <View style={styles.swipeContainer}>
+                <View style={styles.swipeActions}>
+                    <TouchableOpacity
+                        style={[styles.swipeAction, styles.viewDetailsAction, { backgroundColor: '#2196F3' }]}
+                        onPress={() => {
+                            closeSwipe();
+                            onViewDetails(item);
+                        }}
+                    >
+                        <Ionicons name="eye-outline" size={22} color="#FFFFFF" />
+                        <Text style={styles.swipeActionText}>Details</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.swipeAction, styles.deleteAction, { backgroundColor: '#F44336' }]}
+                        onPress={() => {
+                            closeSwipe();
+                            onDelete(item);
+                        }}
+                    >
+                        <Ionicons name="trash-outline" size={22} color="#FFFFFF" />
+                        <Text style={styles.swipeActionText}>Delete</Text>
+                    </TouchableOpacity>
+                </View>
+                <Animated.View
+                    style={[
+                        styles.grievanceCard,
+                        { backgroundColor: colors.card, borderColor: colors.border, transform: [{ translateX: swipeAnim }] },
+                    ]}
+                    {...panResponder.panHandlers}
+                >
+                    <TouchableOpacity onPress={handlePress} activeOpacity={0.9}>
+                        <View style={styles.grievanceHeader}>
+                            <View style={styles.grievanceTitleRow}>
+                                <Text style={[styles.grievanceTitle, { color: colors.text }]} numberOfLines={1}>
+                                    {item.title}
+                                </Text>
+                                <View style={[styles.statusBadge, { backgroundColor: statusColors[item.status] + '20' }]}>
+                                    <Text style={[styles.statusText, { color: statusColors[item.status] }]}>
+                                        {statusLabels[item.status] || item.status}
+                                    </Text>
+                                </View>
+                            </View>
+                            <View style={styles.caseIdRow}>
+                                <Ionicons name="document-text" size={12} color={colors.primary} />
+                                <Text style={[styles.caseId, { color: colors.primary }]}>{item.case_id || 'N/A'}</Text>
+                            </View>
+                            <Text style={[styles.grievanceCategory, { color: colors.gray }]}>
+                                {complaintTypes.find(c => c.id === item.category)?.label || item.category}
+                            </Text>
+                        </View>
+                        <Text style={[styles.grievanceDesc, { color: colors.gray }]} numberOfLines={2}>
+                            {item.description}
+                        </Text>
+                        <View style={styles.grievanceFooter}>
+                            <View style={styles.footerLeft}>
+                                <View style={[styles.priorityBadge, { backgroundColor: priorityColors[item.priority] + '20' }]}>
+                                    <Text style={[styles.priorityText, { color: priorityColors[item.priority] }]}>
+                                        {item.priority?.toUpperCase()}
+                                    </Text>
+                                </View>
+                                <Text style={[styles.grievanceDate, { color: colors.gray }]}>
+                                    {new Date(item.created_at).toLocaleDateString()}
+                                </Text>
+                            </View>
+                            <View style={styles.swipeHint}>
+                                <Ionicons name="chevron-back" size={14} color={colors.gray} />
+                                <Text style={[styles.swipeHintText, { color: colors.gray }]}>Swipe</Text>
+                            </View>
+                        </View>
+                    </TouchableOpacity>
+                </Animated.View>
+            </View>
+        );
+    };
+
+    const handleViewDetails = (item) => {
+        Alert.alert(
+            'Complaint Details',
+            `Case ID: ${item.case_id || 'N/A'}\n\nTitle: ${item.title}\n\nCategory: ${complaintTypes.find(c => c.id === item.category)?.label || item.category}\n\nStatus: ${statusLabels[item.status] || item.status}\n\nPriority: ${item.priority?.toUpperCase()}\n\nDescription:\n${item.description}\n\nSubmitted: ${new Date(item.created_at).toLocaleString()}${item.resolution_notes ? `\n\nResolution:\n${item.resolution_notes}` : ''}`,
+            [
+                { text: 'Close', style: 'cancel' },
+                { text: 'View Conversation', onPress: () => openGrievanceDetails(item) },
+            ]
+        );
+    };
+
+    const handleDelete = (item) => {
+        Alert.alert(
+            'Delete Complaint',
+            `Are you sure you want to delete this complaint?\n\nCase ID: ${item.case_id || 'N/A'}\n\nThis action cannot be undone.`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await grievanceService.updateGrievance(item.id, { deleted: true });
+                            setGrievances(prev => prev.filter(g => g.id !== item.id));
+                            Alert.alert('Success', 'Complaint deleted successfully');
+                        } catch (error) {
+                            Alert.alert('Error', 'Failed to delete complaint');
+                        }
+                    },
+                },
+            ]
+        );
     };
 
     const renderGrievanceItem = ({ item }) => (
-        <TouchableOpacity
-            style={[styles.grievanceCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-            onPress={() => openGrievanceDetails(item)}
-        >
-            <View style={styles.grievanceHeader}>
-                <View style={styles.grievanceTitleRow}>
-                    <Text style={[styles.grievanceTitle, { color: colors.text }]} numberOfLines={1}>
-                        {item.title}
-                    </Text>
-                    <View style={[styles.statusBadge, { backgroundColor: statusColors[item.status] + '20' }]}>
-                        <Text style={[styles.statusText, { color: statusColors[item.status] }]}>
-                            {statusLabels[item.status] || item.status}
+        <SwipeableGrievanceCard
+            item={item}
+            onPress={openGrievanceDetails}
+            onViewDetails={handleViewDetails}
+            onDelete={handleDelete}
+        />
+    );
+
+    const renderMessageBubble = ({ item, index }) => {
+        const isUser = !item.is_admin;
+        const showSender = index === 0 || messages[index - 1]?.is_admin !== item.is_admin;
+        
+        return (
+            <View style={[styles.messageContainer, isUser ? styles.userMessageContainer : styles.adminMessageContainer]}>
+                {!isUser && showSender && (
+                    <View style={styles.senderInfo}>
+                        <Ionicons name="shield-checkmark" size={14} color={colors.primary} />
+                        <Text style={[styles.senderName, { color: colors.primary }]}>
+                            {item.sender_first_name ? `Support Team` : 'Admin'}
                         </Text>
                     </View>
-                </View>
-                <Text style={[styles.grievanceCategory, { color: colors.gray }]}>
-                    {complaintTypes.find(c => c.id === item.category)?.label || item.category}
-                </Text>
-            </View>
-            <Text style={[styles.grievanceDesc, { color: colors.gray }]} numberOfLines={2}>
-                {item.description}
-            </Text>
-            <View style={styles.grievanceFooter}>
-                <View style={[styles.priorityBadge, { backgroundColor: priorityColors[item.priority] + '20' }]}>
-                    <Text style={[styles.priorityText, { color: priorityColors[item.priority] }]}>
-                        {item.priority?.toUpperCase()}
+                )}
+                <View style={[styles.messageBubble, isUser ? styles.userBubble : styles.adminBubble]}>
+                    <Text style={[styles.messageText, { color: isUser ? '#FFFFFF' : colors.text }]}>
+                        {item.message}
+                    </Text>
+                    <Text style={[styles.messageTime, { color: isUser ? 'rgba(255,255,255,0.7)' : colors.gray }]}>
+                        {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </Text>
                 </View>
-                <Text style={[styles.grievanceDate, { color: colors.gray }]}>
-                    {new Date(item.created_at).toLocaleDateString()}
-                </Text>
             </View>
-        </TouchableOpacity>
-    );
+        );
+    };
 
     const renderSubmitTab = () => (
         <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -286,6 +490,78 @@ const GrievanceScreen = ({ navigation }) => {
         />
     );
 
+    const renderConversationView = () => {
+        if (!selectedGrievance) return null;
+
+        return (
+            <KeyboardAvoidingView 
+                style={[styles.conversationContainer, { backgroundColor: colors.background }]}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+            >
+                <View style={[styles.conversationHeader, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+                    <TouchableOpacity onPress={() => setSelectedGrievance(null)} style={styles.backButton}>
+                        <Ionicons name="arrow-back" size={24} color={colors.text} />
+                    </TouchableOpacity>
+                    <View style={styles.headerInfo}>
+                        <View style={styles.caseIdHeader}>
+                            <Ionicons name="document-text" size={14} color={colors.primary} />
+                            <Text style={[styles.caseIdText, { color: colors.primary }]}>{selectedGrievance.case_id}</Text>
+                        </View>
+                        <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
+                            {selectedGrievance.title}
+                        </Text>
+                        <View style={[styles.statusBadgeSmall, { backgroundColor: statusColors[selectedGrievance.status] + '20' }]}>
+                            <Text style={[styles.statusTextSmall, { color: statusColors[selectedGrievance.status] }]}>
+                                {statusLabels[selectedGrievance.status]}
+                            </Text>
+                        </View>
+                    </View>
+                </View>
+
+                <FlatList
+                    ref={flatListRef}
+                    data={messages}
+                    keyExtractor={(item) => item.id}
+                    renderItem={renderMessageBubble}
+                    contentContainerStyle={styles.messagesList}
+                    ListEmptyComponent={
+                        <View style={styles.emptyMessages}>
+                            <Ionicons name="chatbubbles-outline" size={48} color={colors.gray} />
+                            <Text style={[styles.emptyMessagesText, { color: colors.gray }]}>
+                                No messages yet. Start the conversation!
+                            </Text>
+                        </View>
+                    }
+                    onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+                />
+
+                <View style={[styles.messageInputContainer, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
+                    <TextInput
+                        style={[styles.messageInput, { backgroundColor: colors.background, color: colors.text }]}
+                        placeholder="Type your message..."
+                        placeholderTextColor={colors.gray}
+                        value={messageText}
+                        onChangeText={setMessageText}
+                        multiline
+                        maxLength={1000}
+                    />
+                    <TouchableOpacity
+                        style={[styles.sendButton, { backgroundColor: colors.primary }, (!messageText.trim() || sendingMessage) && styles.sendButtonDisabled]}
+                        onPress={handleSendMessage}
+                        disabled={!messageText.trim() || sendingMessage}
+                    >
+                        <Ionicons name="send" size={20} color="#FFFFFF" />
+                    </TouchableOpacity>
+                </View>
+            </KeyboardAvoidingView>
+        );
+    };
+
+    if (selectedGrievance) {
+        return renderConversationView();
+    }
+
     return (
         <KeyboardAvoidingView style={[styles.container, { backgroundColor: colors.background }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <View style={styles.tabContainer}>
@@ -300,84 +576,6 @@ const GrievanceScreen = ({ navigation }) => {
             <View style={styles.content}>
                 {activeTab === 'submit' ? renderSubmitTab() : renderMyGrievancesTab()}
             </View>
-
-            <Modal visible={showDetailsModal} animationType="slide" transparent>
-                <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
-                        {selectedGrievance && (
-                            <ScrollView showsVerticalScrollIndicator={false}>
-                                <View style={styles.modalHeader}>
-                                    <Text style={[styles.modalTitle, { color: colors.text }]}>Complaint Details</Text>
-                                    <TouchableOpacity onPress={() => setShowDetailsModal(false)}>
-                                        <Ionicons name="close" size={24} color={colors.gray} />
-                                    </TouchableOpacity>
-                                </View>
-
-                                <View style={styles.detailRow}>
-                                    <Text style={[styles.detailLabel, { color: colors.gray }]}>Ticket ID</Text>
-                                    <Text style={[styles.detailValue, { color: colors.text }]}>{selectedGrievance.id}</Text>
-                                </View>
-
-                                <View style={styles.detailRow}>
-                                    <Text style={[styles.detailLabel, { color: colors.gray }]}>Title</Text>
-                                    <Text style={[styles.detailValue, { color: colors.text }]}>{selectedGrievance.title}</Text>
-                                </View>
-
-                                <View style={styles.detailRow}>
-                                    <Text style={[styles.detailLabel, { color: colors.gray }]}>Category</Text>
-                                    <Text style={[styles.detailValue, { color: colors.text }]}>
-                                        {complaintTypes.find(c => c.id === selectedGrievance.category)?.label || selectedGrievance.category}
-                                    </Text>
-                                </View>
-
-                                <View style={styles.detailRow}>
-                                    <Text style={[styles.detailLabel, { color: colors.gray }]}>Priority</Text>
-                                    <View style={[styles.priorityBadge, { backgroundColor: priorityColors[selectedGrievance.priority] + '20' }]}>
-                                        <Text style={[styles.priorityText, { color: priorityColors[selectedGrievance.priority] }]}>
-                                            {selectedGrievance.priority?.toUpperCase()}
-                                        </Text>
-                                    </View>
-                                </View>
-
-                                <View style={styles.detailRow}>
-                                    <Text style={[styles.detailLabel, { color: colors.gray }]}>Status</Text>
-                                    <View style={[styles.statusBadge, { backgroundColor: statusColors[selectedGrievance.status] + '20' }]}>
-                                        <Text style={[styles.statusText, { color: statusColors[selectedGrievance.status] }]}>
-                                            {statusLabels[selectedGrievance.status]}
-                                        </Text>
-                                    </View>
-                                </View>
-
-                                <View style={styles.detailRow}>
-                                    <Text style={[styles.detailLabel, { color: colors.gray }]}>Description</Text>
-                                    <Text style={[styles.detailValue, { color: colors.text }]}>{selectedGrievance.description}</Text>
-                                </View>
-
-                                {selectedGrievance.resolution_notes && (
-                                    <View style={styles.detailRow}>
-                                        <Text style={[styles.detailLabel, { color: colors.gray }]}>Resolution Notes</Text>
-                                        <Text style={[styles.detailValue, { color: colors.text }]}>{selectedGrievance.resolution_notes}</Text>
-                                    </View>
-                                )}
-
-                                <View style={styles.detailRow}>
-                                    <Text style={[styles.detailLabel, { color: colors.gray }]}>Submitted On</Text>
-                                    <Text style={[styles.detailValue, { color: colors.text }]}>{new Date(selectedGrievance.created_at).toLocaleString()}</Text>
-                                </View>
-
-                                <View style={styles.detailRow}>
-                                    <Text style={[styles.detailLabel, { color: colors.gray }]}>Last Updated</Text>
-                                    <Text style={[styles.detailValue, { color: colors.text }]}>{new Date(selectedGrievance.updated_at).toLocaleString()}</Text>
-                                </View>
-
-                                <TouchableOpacity style={[styles.closeButton, { backgroundColor: colors.primary }]} onPress={() => setShowDetailsModal(false)}>
-                                    <Text style={styles.closeButtonText}>Close</Text>
-                                </TouchableOpacity>
-                            </ScrollView>
-                        )}
-                    </View>
-                </View>
-            </Modal>
         </KeyboardAvoidingView>
     );
 };
@@ -410,26 +608,68 @@ const styles = StyleSheet.create({
     grievanceHeader: { marginBottom: 8 },
     grievanceTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
     grievanceTitle: { flex: 1, fontSize: 15, fontWeight: '600' },
+    caseIdRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+    caseId: { fontSize: 11, fontWeight: '600', marginLeft: 4 },
     statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
     statusText: { fontSize: 11, fontWeight: '600' },
     grievanceCategory: { fontSize: 12 },
     grievanceDesc: { fontSize: 13, marginBottom: 8 },
-    grievanceFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    grievanceFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
+    footerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     priorityBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
     priorityText: { fontSize: 10, fontWeight: '600' },
     grievanceDate: { fontSize: 12 },
+    detailsButton: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
+    detailsButtonText: { fontSize: 12, fontWeight: '600', marginLeft: 4 },
+    swipeHint: { flexDirection: 'row', alignItems: 'center' },
+    swipeHintText: { fontSize: 11, marginLeft: 2 },
+    swipeContainer: { position: 'relative', marginBottom: 12 },
+    swipeActions: { 
+        position: 'absolute', 
+        right: 0, 
+        top: 0, 
+        bottom: 12, 
+        flexDirection: 'row', 
+        alignItems: 'center' 
+    },
+    swipeAction: { 
+        width: 80, 
+        height: '100%', 
+        justifyContent: 'center', 
+        alignItems: 'center' 
+    },
+    viewDetailsAction: { borderTopRightRadius: 12 },
+    deleteAction: { borderBottomRightRadius: 12 },
+    swipeActionText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600', marginTop: 4 },
     emptyContainer: { alignItems: 'center', paddingTop: 60 },
     emptyText: { fontSize: 16, fontWeight: '600', marginTop: 16 },
     emptySubtext: { fontSize: 14, marginTop: 4 },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-    modalContent: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '80%' },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    modalTitle: { fontSize: 18, fontWeight: '700' },
-    detailRow: { marginBottom: 16 },
-    detailLabel: { fontSize: 12, marginBottom: 4 },
-    detailValue: { fontSize: 15 },
-    closeButton: { padding: 14, borderRadius: 12, alignItems: 'center', marginTop: 20 },
-    closeButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+    conversationContainer: { flex: 1 },
+    conversationHeader: { flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: 1 },
+    backButton: { padding: 8, marginRight: 8 },
+    headerInfo: { flex: 1 },
+    caseIdHeader: { flexDirection: 'row', alignItems: 'center' },
+    caseIdText: { fontSize: 12, fontWeight: '600', marginLeft: 4 },
+    headerTitle: { fontSize: 16, fontWeight: '600', marginTop: 2 },
+    statusBadgeSmall: { alignSelf: 'flex-start', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginTop: 4 },
+    statusTextSmall: { fontSize: 10, fontWeight: '600' },
+    messagesList: { padding: 16, flexGrow: 1 },
+    messageContainer: { marginBottom: 12, maxWidth: '80%' },
+    userMessageContainer: { alignSelf: 'flex-end' },
+    adminMessageContainer: { alignSelf: 'flex-start' },
+    senderInfo: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+    senderName: { fontSize: 12, fontWeight: '600', marginLeft: 4 },
+    messageBubble: { padding: 12, borderRadius: 16 },
+    userBubble: { backgroundColor: '#2563EB', borderBottomRightRadius: 4 },
+    adminBubble: { backgroundColor: '#F3F4F6', borderBottomLeftRadius: 4 },
+    messageText: { fontSize: 15, lineHeight: 20 },
+    messageTime: { fontSize: 10, marginTop: 4, alignSelf: 'flex-end' },
+    emptyMessages: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 100 },
+    emptyMessagesText: { fontSize: 14, marginTop: 12, textAlign: 'center' },
+    messageInputContainer: { flexDirection: 'row', alignItems: 'flex-end', padding: 12, borderTopWidth: 1 },
+    messageInput: { flex: 1, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, maxHeight: 100, fontSize: 15 },
+    sendButton: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
+    sendButtonDisabled: { opacity: 0.5 },
 });
 
 export default GrievanceScreen;

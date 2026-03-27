@@ -54,6 +54,7 @@ import LiveShareScreen from '../screens/LiveShareScreen';
 import LiveReceiverScreen from '../screens/LiveReceiverScreen';
 import CommunityScreen from '../screens/CommunityScreen';
 import AppGuideScreen from '../screens/AppGuideScreen';
+import AboutAppScreen from '../screens/AboutAppScreen';
 import { TouchableOpacity } from 'react-native';
 
 // Import Admin screens
@@ -90,6 +91,7 @@ const AdminStack = () => {
                 },
                 headerBackVisible: true,
                 headerBackTitle: 'Back',
+                headerBackTitleVisible: true,
             }}
         >
             <Stack.Screen
@@ -149,9 +151,9 @@ const CoreServicesStack = ({ navigation }) => {
                 contentStyle: {
                     backgroundColor: colors.background,
                 },
-                // Enable back button
                 headerBackVisible: true,
                 headerBackTitle: 'Back',
+                headerBackTitleVisible: true,
             }}
         >
             <Stack.Screen
@@ -267,7 +269,7 @@ const CoreServicesStack = ({ navigation }) => {
             <Stack.Screen
                 name="FamilyLocation"
                 component={FamilyLocationScreen}
-                options={{ title: 'Live Locations' }}
+                options={{ headerShown: false }}
             />
             <Stack.Screen
                 name="CylinderVerification"
@@ -389,6 +391,11 @@ const CoreServicesStack = ({ navigation }) => {
                 component={AppGuideScreen}
                 options={{ title: 'App Guide' }}
             />
+            <Stack.Screen
+                name="AboutApp"
+                component={AboutAppScreen}
+                options={{ title: 'About App' }}
+            />
         </Stack.Navigator>
     );
 };
@@ -400,6 +407,19 @@ const AppNavigator = () => {
     const isAdmin = userRole === 'admin';
 
     return (
+        <Stack.Navigator
+            screenOptions={{
+                headerStyle: { backgroundColor: colors.background },
+                headerTintColor: colors.text,
+                headerTitleStyle: { fontWeight: '600' },
+                headerShadowVisible: false,
+                headerBackVisible: true,
+                headerBackTitle: 'Back',
+                headerBackTitleVisible: true,
+            }}
+        >
+            <Stack.Screen name="MainTabs" options={{ headerShown: false }}>
+            {() => (
         <Tab.Navigator
             screenOptions={({ route }) => ({
                 tabBarIcon: ({ focused, color, size }) => {
@@ -506,6 +526,9 @@ const AppNavigator = () => {
                 }}
             />
         </Tab.Navigator>
+            )}
+        </Stack.Screen>
+        </Stack.Navigator>
     );
 };
 

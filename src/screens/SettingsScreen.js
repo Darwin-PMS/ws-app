@@ -16,6 +16,7 @@ import { useApp } from '../context/AppContext';
 import biometricService from '../services/biometricService';
 import silentModeService from '../services/silentModeService';
 import userService from '../services/userService';
+import settingsService from '../services/settingsService';
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 import { Camera } from 'expo-camera';
@@ -55,6 +56,8 @@ const SettingsScreen = ({ navigation }) => {
     const [showDurationModal, setShowDurationModal] = useState(false);
     const [showSOSModal, setShowSOSModal] = useState(false);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+    const [groqApiKey, setGroqApiKey] = useState('');
     const [silentDuration, setSilentDuration] = useState(0);
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
@@ -77,7 +80,42 @@ const SettingsScreen = ({ navigation }) => {
         loadSilentVibrationSettings();
         loadUserSettings();
         checkPermissions();
+        loadGroqApiKey();
     }, []);
+
+    const loadGroqApiKey = async () => {
+        try {
+            const key = await settingsService.getGroqApiKey();
+            if (key) setGroqApiKey(key);
+        } catch (error) {
+            console.log('Error loading Groq API key:', error);
+        }
+    };
+
+    const handleSaveApiKey = async () => {
+        if (!groqApiKey.trim()) {
+            Alert.alert('Error', 'Please enter a valid API key');
+            return;
+        }
+        const success = await settingsService.saveGroqApiKey(groqApiKey.trim());
+        if (success) {
+            Alert.alert('Success', 'Groq API key saved successfully');
+            setShowApiKeyModal(false);
+        } else {
+            Alert.alert('Error', 'Failed to save API key');
+        }
+    };
+
+    const handleClearApiKey = async () => {
+        Alert.alert('Clear API Key', 'Are you sure you want to remove your Groq API key?', [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Clear', style: 'destructive', onPress: async () => {
+                await settingsService.clearLocalGroqKey();
+                setGroqApiKey('');
+                Alert.alert('Success', 'API key removed');
+            }},
+        ]);
+    };
 
     const checkPermissions = async () => {
         try {
@@ -264,14 +302,17 @@ const SettingsScreen = ({ navigation }) => {
             { id: 'silentMode', title: 'Silent Mode', icon: 'volume-mute-outline', type: 'switch', value: silentMode, onValueChange: handleSilentModeToggle },
             { id: 'vibrationMode', title: 'Vibration', icon: 'phone-portrait-outline', type: 'switch', value: vibrationMode, onValueChange: handleVibrationModeToggle },
         ]},
+        { title: 'AI Settings', items: [
+            { id: 'groq_api_key', title: 'Groq API Key', icon: 'key-outline', type: 'link', onPress: () => setShowApiKeyModal(true), value: groqApiKey ? 'Configured' : 'Not Set' },
+        ]},
         { title: 'Safety Resources', items: [
             { id: 'helpline', title: 'Emergency Helplines', icon: 'call-outline', type: 'link', onPress: () => navigation.navigate('EmergencyHelpline') },
             { id: 'grievance', title: 'File Complaint', icon: 'document-text-outline', type: 'link', onPress: () => navigation.navigate('Grievance') },
-            { id: 'privacy', title: 'Privacy Policy', icon: 'shield-outline', type: 'link', onPress: () => navigation.navigate('PrivacyPolicy') },
-            { id: 'terms', title: 'Terms of Service', icon: 'document-text-outline', type: 'link', onPress: () => navigation.navigate('TermsOfService') },
         ]},
         { title: 'About', items: [
-            { id: 'about', title: 'About App', icon: 'information-circle-outline', type: 'link', onPress: () => Alert.alert('Women Safety App v1.0.0', 'Your safety is our priority') },
+            { id: 'about', title: 'About App', icon: 'information-circle-outline', type: 'link', onPress: () => navigation.navigate('AboutApp') },
+            { id: 'privacy', title: 'Privacy Policy', icon: 'shield-outline', type: 'link', onPress: () => navigation.navigate('PrivacyPolicy') },
+            { id: 'terms', title: 'Terms of Service', icon: 'document-text-outline', type: 'link', onPress: () => navigation.navigate('TermsOfService') },
         ]},
     ];
 
@@ -294,8 +335,42 @@ const SettingsScreen = ({ navigation }) => {
             );
         }
 
+        if (item.type === 'link') {
+            return (
+                <TouchableOpacity key={item.id} style={[styles.settingItem, !isLast && { borderBottomWidth: 1, borderColor: colors.border }]} onPress={item.onPress}>
+                    <View style={[styles.itemIcon, { backgroundColor: colors.primary + '15' }]}>
+                        <Ionicons name={item.icon} size={20} color={colors.primary} />
+                    </View>
+                    <View style={styles.settingTextContainer}>
+                        <Text style={[styles.settingText, { color: colors.text }]}>{item.title}</Text>
+                        {item.value && <Text style={[styles.settingValue, { color: colors.primary }]}>{item.value}</Text>}
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={colors.gray} />
+                </TouchableOpacity>
+            );
+        }
+
+        if (item.type === 'info') {
+            return (
+                <View key={item.id} style={[styles.settingItem, !isLast && { borderBottomWidth: 1, borderColor: colors.border }]}>
+                    <View style={[styles.itemIcon, { backgroundColor: colors.primary + '15' }]}>
+                        <Ionicons name={item.icon} size={20} color={colors.primary} />
+                    </View>
+                    <View style={styles.settingTextContainer}>
+                        <Text style={[styles.settingText, { color: colors.text }]}>{item.title}</Text>
+                        {item.value && <Text style={[styles.settingValue, { color: colors.primary }]}>{item.value}</Text>}
+                    </View>
+                </View>
+            );
+        }
+
         return (
-            <View key={item.id} style={[styles.settingItem, !isLast && { borderBottomWidth: 1, borderColor: colors.border }]}>
+            <TouchableOpacity 
+                key={item.id} 
+                style={[styles.settingItem, !isLast && { borderBottomWidth: 1, borderColor: colors.border }]} 
+                onPress={item.onPress}
+                disabled={item.disabled || item.type === 'switch'}
+            >
                 <View style={[styles.itemIcon, { backgroundColor: item.disabled ? colors.gray + '15' : colors.primary + '15' }]}>
                     <Ionicons name={item.icon} size={20} color={item.disabled ? colors.gray : colors.primary} />
                 </View>
@@ -308,9 +383,9 @@ const SettingsScreen = ({ navigation }) => {
                 {item.type === 'switch' ? (
                     <Switch value={item.value} onValueChange={item.onValueChange} disabled={item.disabled} trackColor={{ true: colors.primary + '60' }} thumbColor={item.value ? colors.primary : colors.gray + '50'} />
                 ) : (
-                    <TouchableOpacity onPress={item.onPress}><Ionicons name="chevron-forward" size={20} color={colors.gray} /></TouchableOpacity>
+                    <Ionicons name="chevron-forward" size={20} color={colors.gray} />
                 )}
-            </View>
+            </TouchableOpacity>
         );
     };
 
@@ -400,6 +475,31 @@ const SettingsScreen = ({ navigation }) => {
                     </View>
                 </View>
             </Modal>
+
+            <Modal visible={showApiKeyModal} animationType="slide" transparent onRequestClose={() => setShowApiKeyModal(false)}>
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { backgroundColor: colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24 }]}>
+                        <View style={styles.modalHandle} />
+                        <Text style={[styles.modalTitle, { color: colors.text }]}>Groq API Key</Text>
+                        <Text style={[styles.modalSubtitle, { color: colors.gray }]}>Enter your Groq API key to enable AI features like Vision analysis.</Text>
+                        <View style={[styles.inputWrapper, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                            <Ionicons name="key-outline" size={20} color={colors.gray} />
+                            <TextInput style={[styles.input, { color: colors.text }]} placeholder="gsk_..." placeholderTextColor={colors.gray} value={groqApiKey} onChangeText={setGroqApiKey} autoCapitalize="none" autoCorrect={false} secureTextEntry />
+                        </View>
+                        <TouchableOpacity style={[styles.submitButton, { backgroundColor: '#8B5CF6' }]} onPress={handleSaveApiKey}>
+                            <Text style={styles.submitButtonText}>Save API Key</Text>
+                        </TouchableOpacity>
+                        {groqApiKey ? (
+                            <TouchableOpacity style={[styles.cancelButton, { borderColor: colors.error, marginTop: 8 }]} onPress={handleClearApiKey}>
+                                <Text style={[styles.cancelButtonText, { color: colors.error }]}>Remove API Key</Text>
+                            </TouchableOpacity>
+                        ) : null}
+                        <TouchableOpacity style={[styles.cancelButton, { borderColor: colors.border, marginTop: 8 }]} onPress={() => setShowApiKeyModal(false)}>
+                            <Text style={[styles.cancelButtonText, { color: colors.gray }]}>Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 };
@@ -427,7 +527,8 @@ const styles = StyleSheet.create({
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
     modalContent: { padding: 24, paddingBottom: 40 },
     modalHandle: { width: 40, height: 4, backgroundColor: '#ccc', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-    modalTitle: { fontSize: 20, fontWeight: '700', marginBottom: 20 },
+    modalTitle: { fontSize: 20, fontWeight: '700', marginBottom: 8 },
+    modalSubtitle: { fontSize: 14, marginBottom: 16 },
     optionItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderRadius: 12, marginBottom: 8 },
     optionText: { fontSize: 16 },
     cancelButton: { padding: 16, borderRadius: 12, borderWidth: 1, marginTop: 8 },

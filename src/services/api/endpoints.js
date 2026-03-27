@@ -5,6 +5,12 @@ export const API_CONFIG = {
   TIMEOUT: 30000,
 };
 
+export const QR_CONFIG = {
+  APP_NAME: 'Nirbhaya - Women Safety',
+  APP_PLAY_STORE_URL: 'https://play.google.com/store/apps/details?id=com.nirbhaya.womensafety',
+  PUBLIC_SCAN_URL: 'https://qr.nirbhaya.app/scan',
+};
+
 export const ENDPOINTS = {
   auth: {
     login: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/auth/login`,
@@ -23,6 +29,7 @@ export const ENDPOINTS = {
     role: (id) => `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/users/${id}/role`,
     emergencyContactsAll: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/users/emergency-contacts/all`,
     emergencyContactsDefault: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/users/emergency-contacts/default`,
+    emergencyContactsAllWithSupport: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/users/emergency-contacts/all-with-support`,
     preferences: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/users/emergency-contacts/preferences`,
     updatePreferences: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/users/emergency-contacts/preferences`,
     emergencyContacts: (id) => `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/users/${id}/emergency-contacts`,
@@ -172,7 +179,9 @@ export const ENDPOINTS = {
     submit: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/grievance`,
     myList: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/grievance/my`,
     details: (id) => `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/grievance/${id}`,
+    detailsWithMessages: (id) => `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/grievance/${id}/details`,
     update: (id) => `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/grievance/${id}`,
+    messages: (id) => `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/grievance/${id}/messages`,
   },
   sessions: {
     history: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/sessions/history`,

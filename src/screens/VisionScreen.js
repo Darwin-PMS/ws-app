@@ -31,7 +31,10 @@ const VisionScreen = ({ navigation }) => {
         try {
             const response = await aiService.analyzeImage(image.base64);
             setAnalysis(response.analysis || 'No analysis available');
-        } catch (error) { Alert.alert('Error', 'Failed to analyze image'); }
+        } catch (error) {
+            console.error('Vision analysis error:', error);
+            Alert.alert('Error', error.message || 'Failed to analyze image. Please check your API key in settings.');
+        }
         finally { setIsAnalyzing(false); }
     };
 

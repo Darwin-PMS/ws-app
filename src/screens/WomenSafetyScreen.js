@@ -96,6 +96,13 @@ const WomenSafetyScreen = ({ navigation }) => {
         };
     }, []);
 
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('focus', () => {
+            loadEmergencyContacts();
+        });
+        return unsubscribe;
+    }, [navigation]);
+
     const initializeDeviceMonitoring = async () => {
         try {
             await batteryService.initialize();

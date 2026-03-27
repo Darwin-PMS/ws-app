@@ -1,15 +1,13 @@
 // Settings Service
-// Handles fetching global application settings from the backend
+// Handles local app settings storage
 
-import { mobileApi, ENDPOINTS } from './api/mobileApi';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const LOCAL_GROQ_KEY = '@local_groq_api_key';
 
 class SettingsService {
     constructor() {
         this.cachedSettings = {};
-    }
-
-    async initialize() {
-        await mobileApi.initialize();
     }
 
     async getGroqApiKey() {
@@ -18,17 +16,37 @@ class SettingsService {
                 return this.cachedSettings.groq_key;
             }
 
-            const response = await mobileApi.get(ENDPOINTS.settings.groqKey);
-
-            if (response.success && response.data && response.data.key) {
-                this.cachedSettings.groq_key = response.data.key;
-                return response.data.key;
+            const localKey = await AsyncStorage.getItem(LOCAL_GROQ_KEY);
+            if (localKey) {
+                this.cachedSettings.groq_key = localKey;
             }
 
-            return null;
+            return localKey;
         } catch (error) {
             console.error('Error fetching Groq API key:', error);
             return null;
+        }
+    }
+
+    async saveGroqApiKey(apiKey) {
+        try {
+            await AsyncStorage.setItem(LOCAL_GROQ_KEY, apiKey);
+            this.cachedSettings.groq_key = apiKey;
+            return true;
+        } catch (error) {
+            console.error('Error saving Groq API key:', error);
+            return false;
+        }
+    }
+
+    async clearLocalGroqKey() {
+        try {
+            await AsyncStorage.removeItem(LOCAL_GROQ_KEY);
+            this.cachedSettings.groq_key = null;
+            return true;
+        } catch (error) {
+            console.error('Error clearing Groq API key:', error);
+            return false;
         }
     }
 

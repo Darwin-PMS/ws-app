@@ -13,12 +13,16 @@ import {
     ActivityIndicator,
     Share,
     Dimensions,
+    Linking,
+    Clipboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useApp } from '../context/AppContext';
-import { apiClient, ENDPOINTS } from '../services/api/client';
-import * as Camera from 'expo-camera';
+import { apiClient } from '../services/api/client';
+import { ENDPOINTS, API_CONFIG, QR_CONFIG } from '../services/api/endpoints';
+import Camera from 'expo-camera';
+import * as FileSystem from 'expo-file-system';
 
 const PERMISSION_TYPES = {
     VIEW_PROFILE: 'view_profile',
@@ -35,7 +39,24 @@ const TOKEN_TYPES = {
     TEMP_ACCESS: 'temp_access',
 };
 
-const API_BASE = 'http://YOUR_SERVER_IP:3000/apiClient/v1/mobile';
+const QR_GUIDELINES = (appName) => `📋 IMPORTANT GUIDELINES:
+
+⚠️ Before Scanning:
+• Only scan QR codes from trusted sources
+• Verify the person's identity before sharing your code
+
+🔒 While Using:
+• This code grants access based on selected permissions only
+• Your sensitive data remains protected
+• You can revoke access anytime from settings
+
+📱 After Scanning:
+• Report suspicious access to the app support team
+• Keep the app updated for security patches
+
+🔐 Remember: The app owner can revoke access at any time.
+
+Stay Safe! ${appName} Team`;
 
 const QRScreen = ({ navigation }) => {
     const { colors, spacing, borderRadius, shadows } = useTheme();
@@ -87,9 +108,9 @@ const QRScreen = ({ navigation }) => {
 
     const fetchMyQRCodes = async () => {
         try {
-            const response = await apiClient.get('/mobile/qr/my-codes');
-            if (response.data.success) {
-                setMyQRCodes(response.data.data);
+            const response = await apiClient.get(ENDPOINTS.qr.myCodes);
+            if (response.success) {
+                setMyQRCodes(response.data || []);
             }
         } catch (error) {
             console.error('Error fetching QR codes:', error);
@@ -98,9 +119,9 @@ const QRScreen = ({ navigation }) => {
 
     const fetchMyPermissions = async () => {
         try {
-            const response = await apiClient.get('/mobile/qr/permissions');
-            if (response.data.success) {
-                setMyPermissions(response.data.data);
+            const response = await apiClient.get(ENDPOINTS.qr.permissions);
+            if (response.success) {
+                setMyPermissions(response.data || []);
             }
         } catch (error) {
             console.error('Error fetching permissions:', error);
@@ -109,9 +130,9 @@ const QRScreen = ({ navigation }) => {
 
     const fetchAccessHistory = async () => {
         try {
-            const response = await apiClient.get('/mobile/qr/access-history');
-            if (response.data.success) {
-                setAccessHistory(response.data.data);
+            const response = await apiClient.get(ENDPOINTS.qr.accessHistory);
+            if (response.success) {
+                setAccessHistory(response.data || []);
             }
         } catch (error) {
             console.error('Error fetching access history:', error);
@@ -128,12 +149,14 @@ const QRScreen = ({ navigation }) => {
                 label: newQR.label,
             };
 
-            const response = await apiClient.post('/mobile/qr/generate', payload);
-            if (response.data.success) {
+            const response = await apiClient.post(ENDPOINTS.qr.generate, payload);
+            if (response.success) {
                 Alert.alert('Success', 'QR code created successfully');
                 setShowCreateModal(false);
                 setNewQR({ tokenType: 'profile', permissions: [], expiresIn: '', maxUses: '', label: '' });
                 fetchMyQRCodes();
+            } else {
+                Alert.alert('Error', response.message || 'Failed to create QR code');
             }
         } catch (error) {
             Alert.alert('Error', 'Failed to create QR code');
@@ -151,8 +174,8 @@ const QRScreen = ({ navigation }) => {
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            const response = await apiClient.delete(`/mobile/qr/revoke/${tokenId}`);
-                            if (response.data.success) {
+                            const response = await apiClient.delete(ENDPOINTS.qr.revoke(tokenId));
+                            if (response.success) {
                                 Alert.alert('Success', 'QR code revoked');
                                 fetchMyQRCodes();
                             }
@@ -172,14 +195,16 @@ const QRScreen = ({ navigation }) => {
         }
 
         try {
-            const response = await apiClient.post('/mobile/qr/scan', { token: scanToken.trim() });
-            if (response.data.success) {
-                setScanResult(response.data.data);
+            const response = await apiClient.post(ENDPOINTS.qr.scan, { token: scanToken.trim() });
+            if (response.success) {
+                setScanResult(response.data);
                 setShowScanModal(false);
                 setShowDetailsModal(true);
+            } else {
+                Alert.alert('Error', response.message || 'Failed to scan QR code');
             }
         } catch (error) {
-            Alert.alert('Error', error.response?.data?.message || 'Failed to scan QR code');
+            Alert.alert('Error', error.message || 'Failed to scan QR code');
         }
     };
 
@@ -205,20 +230,22 @@ const QRScreen = ({ navigation }) => {
         setScanning(false);
 
         try {
-            const response = await apiClient.post('/mobile/qr/scan', { token: data.trim() });
-            if (response.data.success) {
-                setScanResult(response.data.data);
+            const response = await apiClient.post(ENDPOINTS.qr.scan, { token: data.trim() });
+            if (response.success) {
+                setScanResult(response.data);
                 setShowScanModal(false);
                 setShowDetailsModal(true);
+            } else {
+                Alert.alert('Error', response.message || 'Failed to process QR code');
             }
         } catch (error) {
-            Alert.alert('Error', error.response?.data?.message || 'Failed to process QR code');
+            Alert.alert('Error', error.message || 'Failed to process QR code');
         }
     };
 
     const fetchQRImage = async (token) => {
         try {
-            const response = await fetch(`${API_BASE}/qr/image/${token}`);
+            const response = await fetch(`${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/qr/image/${token}`);
             const data = await response.json();
             if (data.success && data.data.qrImage) {
                 setQrImageUrl(data.data.qrImage);
@@ -237,14 +264,126 @@ const QRScreen = ({ navigation }) => {
         setShowQRPreview(true);
     };
 
-    const handleShareQR = async (qrData) => {
+    const getQRImageBase64 = (item) => {
+        if (item?.qrImage) {
+            return item.qrImage;
+        }
+        return null;
+    };
+
+    const shareToWhatsApp = async (localUri, shareMessage) => {
         try {
-            await Share.share({
-                message: `Scan my QR code to access my profile: ${qrData}`,
-                title: 'Share QR Code',
-            });
+            const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(shareMessage)}`;
+            const canOpen = await Linking.canOpenURL(whatsappUrl);
+            
+            if (canOpen) {
+                await Linking.openURL(whatsappUrl);
+                Clipboard.setString(shareMessage);
+                Alert.alert(
+                    'Copied!',
+                    'Message copied to clipboard. Paste it in WhatsApp after selecting the image.'
+                );
+            }
+        } catch (error) {
+            console.log('WhatsApp direct share failed');
+        }
+    };
+
+    const handleShareQR = async (item) => {
+        try {
+            const token = item?.token || '';
+            const publicUrl = `${QR_CONFIG.PUBLIC_SCAN_URL}?t=${encodeURIComponent(token)}`;
+            const qrImageBase64 = getQRImageBase64(item);
+
+            const shareMessage = `${QR_CONFIG.APP_NAME}\n\n👋 I'm sharing my QR code for secure profile access.\n\n📋 Type: ${getTokenTypeLabel(item?.type)}\n🌐 Link: ${publicUrl}\n📱 App: ${QR_CONFIG.APP_PLAY_STORE_URL}\n🔑 Token: ${item?.id || 'N/A'}\n\n${QR_GUIDELINES(QR_CONFIG.APP_NAME)}\n\nvia ${QR_CONFIG.APP_NAME}`;
+
+            const shareWithOptions = async (localUri) => {
+                await Share.share({
+                    title: `${QR_CONFIG.APP_NAME} - QR Code`,
+                    message: shareMessage,
+                    url: localUri ? `file://${localUri}` : undefined,
+                }, {
+                    subject: `${QR_CONFIG.APP_NAME} - QR Code`,
+                    dialogTitle: 'Share QR Code',
+                });
+            };
+
+            const saveAndShareImage = async (base64String) => {
+                const base64Data = base64String.split('base64,')[1];
+                const localUri = `${FileSystem.cacheDirectory}qr_share_${Date.now()}.png`;
+                await FileSystem.writeAsStringAsync(localUri, base64Data, {
+                    encoding: FileSystem.EncodingType.Base64,
+                });
+                return localUri;
+            };
+
+            if (qrImageBase64 && qrImageBase64.startsWith('data:image')) {
+                try {
+                    const localUri = await saveAndShareImage(qrImageBase64);
+
+                    Alert.alert(
+                        'Share QR Code',
+                        'Choose how to share:',
+                        [
+                            {
+                                text: 'WhatsApp',
+                                onPress: async () => {
+                                    await shareToWhatsApp(localUri, shareMessage);
+                                },
+                            },
+                            {
+                                text: 'Other Apps',
+                                onPress: async () => {
+                                    await shareWithOptions(localUri);
+                                },
+                            },
+                            { text: 'Cancel', style: 'cancel' },
+                        ]
+                    );
+
+                } catch (imageError) {
+                    console.log('Could not share image, falling back to text');
+                    await Share.share({
+                        title: `${QR_CONFIG.APP_NAME} - QR Code`,
+                        message: shareMessage,
+                    });
+                }
+            } else {
+                const qrImageApiUrl = token ? `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/qr/image/${token}` : null;
+                try {
+                    const localUri = `${FileSystem.cacheDirectory}qr_share_${Date.now()}.png`;
+                    const { uri } = await FileSystem.downloadAsync(qrImageApiUrl, localUri);
+
+                    Alert.alert(
+                        'Share QR Code',
+                        'Choose how to share:',
+                        [
+                            {
+                                text: 'WhatsApp',
+                                onPress: async () => {
+                                    await shareToWhatsApp(uri, shareMessage);
+                                },
+                            },
+                            {
+                                text: 'Other Apps',
+                                onPress: async () => {
+                                    await shareWithOptions(uri);
+                                },
+                            },
+                            { text: 'Cancel', style: 'cancel' },
+                        ]
+                    );
+
+                } catch (fetchError) {
+                    await Share.share({
+                        title: `${QR_CONFIG.APP_NAME} - QR Code`,
+                        message: shareMessage,
+                    });
+                }
+            }
         } catch (error) {
             console.error('Error sharing:', error);
+            Alert.alert('Error', 'Failed to share QR code');
         }
     };
 
@@ -328,7 +467,7 @@ const QRScreen = ({ navigation }) => {
                         </TouchableOpacity>
                     )}
                     {item.isActive && (
-                        <TouchableOpacity onPress={() => handleShareQR(item.qrData)}>
+                        <TouchableOpacity onPress={() => handleShareQR(item)}>
                             <Ionicons name="share-outline" size={24} color={colors.primary} />
                         </TouchableOpacity>
                     )}
@@ -677,11 +816,8 @@ const QRScreen = ({ navigation }) => {
                     
                     <View style={styles.cameraWrapper}>
                         <Camera
-                            onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+                            onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
                             style={styles.camera}
-                            barcodeScannerSettings={{
-                                barcodeTypes: ["qr"],
-                            }}
                         />
                         <View style={styles.cameraOverlay}>
                             <View style={styles.scanFrame}>
@@ -728,6 +864,15 @@ const QRScreen = ({ navigation }) => {
                             )}
                         </View>
 
+                        {selectedQR?.token && (
+                            <View style={[styles.tokenInfoContainer, { backgroundColor: colors.background }]}>
+                                <Text style={[styles.tokenInfoLabel, { color: colors.textSecondary }]}>Token ID</Text>
+                                <Text style={[styles.tokenInfoValue, { color: colors.text }]} numberOfLines={1}>
+                                    {selectedQR.id}
+                                </Text>
+                            </View>
+                        )}
+
                         <View style={styles.previewPermissions}>
                             <Text style={[styles.previewLabel, { color: colors.textSecondary }]}>
                                 Permissions:
@@ -745,7 +890,7 @@ const QRScreen = ({ navigation }) => {
 
                         <TouchableOpacity
                             style={[styles.shareButton, { backgroundColor: colors.primary }]}
-                            onPress={() => handleShareQR(selectedQR?.qrData)}
+                            onPress={() => handleShareQR(selectedQR)}
                         >
                             <Ionicons name="share-outline" size={20} color="#fff" />
                             <Text style={styles.shareButtonText}>Share QR Code</Text>
@@ -1180,12 +1325,26 @@ const styles = StyleSheet.create({
     },
     previewPermissions: {
         width: '100%',
-        marginTop: 20,
+        marginTop: 16,
         alignItems: 'center',
     },
     previewLabel: {
         fontSize: 14,
         marginBottom: 8,
+    },
+    tokenInfoContainer: {
+        width: '100%',
+        padding: 12,
+        borderRadius: 8,
+        marginTop: 12,
+    },
+    tokenInfoLabel: {
+        fontSize: 11,
+        marginBottom: 4,
+    },
+    tokenInfoValue: {
+        fontSize: 12,
+        fontWeight: '500',
     },
     shareButton: {
         flexDirection: 'row',

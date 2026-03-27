@@ -152,7 +152,7 @@ Guidelines:
             }
 
             // Use Groq's vision-capable model
-            const model = 'llama-3.2-11b-vision-preview';
+            const model = 'meta-llama/llama-4-scout-17b-16e-instruct';
 
             // Prepare the request
             const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
