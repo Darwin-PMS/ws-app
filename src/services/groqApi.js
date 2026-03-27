@@ -397,6 +397,53 @@ export const generateThought = async (
     }
 };
 
+/**
+ * Generate a simple response for any prompt using Groq API
+ * @param {string} prompt - User prompt/message
+ * @param {string} apiKey - Groq API key (optional, will use default if not provided)
+ * @returns {Promise<string>} Generated response
+ */
+export const generateResponse = async (prompt, apiKey = null) => {
+    // If no API key provided, try to get from settings or use a fallback
+    // For now, return a default response if no API key
+    if (!apiKey) {
+        console.warn('No API key provided for generateResponse');
+        return null;
+    }
+
+    try {
+        const response = await fetch(`${BASE_URL}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+                model: 'llama-3.3-70b-versatile',
+                messages: [
+                    {
+                        role: 'user',
+                        content: prompt
+                    }
+                ],
+                temperature: 0.7,
+                max_tokens: 500,
+            }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error?.message || `API Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.choices?.[0]?.message?.content?.trim() || '';
+    } catch (error) {
+        console.error('Generate response error:', error);
+        throw error;
+    }
+};
+
 export default {
     streamChatCompletion,
     chatCompletion,
@@ -408,4 +455,5 @@ export default {
     LANGUAGES,
     THOUGHT_CATEGORIES,
     generateThought,
+    generateResponse,
 };

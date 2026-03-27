@@ -212,6 +212,19 @@ export const ENDPOINTS = {
     revoke: (tokenId) => `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/qr/revoke/${tokenId}`,
     scan: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/qr/scan`,
   },
+  cylinder: {
+    history: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/cylinder/history`,
+    save: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/cylinder/save`,
+    verify: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/cylinder/verify`,
+    delete: (id) => `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/cylinder/${id}`,
+  },
+  safeRoute: {
+    analyze: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/safe-route/analyze`,
+    history: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/safe-route/history`,
+    save: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/safe-route/save`,
+    stats: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/safe-route/stats`,
+    hotspots: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/safe-route/hotspots`,
+  },
   banners: {
     list: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/banners`,
   },

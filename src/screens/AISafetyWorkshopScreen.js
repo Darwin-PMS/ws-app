@@ -1,504 +1,321 @@
-// AI Safety Workshop Screen
-// Interactive workshops teaching harassment awareness and safety protocols
-// through AI-powered role-playing scenarios
-
-import React, { useState, useEffect, useRef } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    ScrollView,
-    TextInput,
-    Animated,
-    Dimensions,
-    Alert,
-    Modal,
-    FlatList,
-} from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Modal, FlatList, Animated, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import groqApi from '../services/groqApi';
+import settingsService from '../services/settingsService';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-// Workshop Categories
 const WORKSHOP_CATEGORIES = [
-    {
-        id: 'harassment',
-        title: 'Harassment Awareness',
-        icon: 'shield-checkmark',
-        color: '#E91E63',
-        description: 'Learn to identify and respond to harassment situations',
-        scenarios: 5,
-    },
-    {
-        id: 'self-defense',
-        title: 'Self-Defense Basics',
-        icon: 'fitness',
-        color: '#FF5722',
-        description: 'Interactive self-defense technique training',
-        scenarios: 4,
-    },
-    {
-        id: 'digital_safety',
-        title: 'Digital Safety',
-        icon: 'phone-portrait',
-        color: '#9C27B0',
-        description: 'Online safety and privacy protection',
-        scenarios: 4,
-    },
-    {
-        id: 'workplace',
-        title: 'Workplace Safety',
-        icon: 'business',
-        color: '#2196F3',
-        description: 'Workplace harassment prevention and response',
-        scenarios: 4,
-    },
-    {
-        id: 'public',
-        title: 'Public Safety',
-        icon: 'people',
-        color: '#4CAF50',
-        description: 'Safety in public spaces and transportation',
-        scenarios: 4,
-    },
+    { id: 'harassment', title: 'Harassment Awareness', icon: 'shield-checkmark', color: '#E91E63', description: 'Learn to identify and respond to harassment', scenarios: 5 },
+    { id: 'self-defense', title: 'Self-Defense', icon: 'fitness', color: '#FF5722', description: 'Interactive self-defense training', scenarios: 4 },
+    { id: 'digital_safety', title: 'Digital Safety', icon: 'phone-portrait', color: '#9C27B0', description: 'Online safety & privacy', scenarios: 4 },
+    { id: 'workplace', title: 'Workplace Safety', icon: 'business', color: '#2196F3', description: 'Workplace harassment prevention', scenarios: 4 },
+    { id: 'public', title: 'Public Safety', icon: 'people', color: '#4CAF50', description: 'Safety in public spaces', scenarios: 4 },
 ];
 
-// Sample Scenarios for each category
 const SCENARIOS = {
     harassment: [
-        {
-            id: 'h1',
-            title: 'Street Harassment Response',
-            description: 'Practice responding to unwanted comments on the street',
-            difficulty: 'Beginner',
-            situations: [
-                {
-                    role: 'aggressor',
-                    dialogue: 'Hey beautiful, why are you in such a hurry? Stop and talk to me!',
-                    options: [
-                        { text: 'Ignore and walk faster', response: 'This is a common strategy. Ignoring can sometimes escalate situations.', score: 3 },
-                        { text: 'Firmly say "Leave me alone"', response: 'A clear, firm boundary is effective. Practice maintaining eye contact.', score: 5 },
-                        { text: 'Start recording them', response: 'Documentation can deter harassment but may escalate the situation.', score: 4 },
-                    ],
-                },
-            ],
-        },
-        {
-            id: 'h2',
-            title: 'Workplace Harassment',
-            description: 'Handle inappropriate comments from a colleague',
-            difficulty: 'Intermediate',
-            situations: [],
-        },
-        {
-            id: 'h3',
-            title: 'Public Transport Harassment',
-            description: 'Deal with inappropriate behavior on public transit',
-            difficulty: 'Intermediate',
-            situations: [],
-        },
-        {
-            id: 'h4',
-            title: 'Online Harassment',
-            description: 'Respond to harassing messages on social media',
-            difficulty: 'Beginner',
-            situations: [],
-        },
-        {
-            id: 'h5',
-            title: 'Verbal Confrontation De-escalation',
-            description: 'De-escalate an aggressive confrontation',
-            difficulty: 'Advanced',
-            situations: [],
-        },
+        { id: 'h1', title: 'Street Harassment', description: 'Respond to unwanted comments', difficulty: 'Beginner', situations: [{ dialogue: 'Hey beautiful, why are you in such a hurry? Stop and talk to me!', options: [{ text: 'Ignore and walk faster', response: 'Ignoring can work but may escalate. Consider being more assertive.' }, { text: 'Firmly say "Leave me alone"', response: 'A clear, firm boundary is effective. Maintain eye contact.' }, { text: 'Start recording them', response: 'Documentation can deter harassment but may escalate.' }] }] },
+        { id: 'h2', title: 'Workplace Harassment', description: 'Handle inappropriate comments', difficulty: 'Intermediate', situations: [{ dialogue: 'Hey, you look great in that outfit!', options: [{ text: 'Thank you and walk away', response: 'Politely acknowledging but not engaging is a good approach.' }, { text: 'This is inappropriate', response: 'Being direct is effective. Document the incident.' }, { text: 'Ignore and continue', response: 'Ignoring may not address the underlying issue.' }] }] },
+        { id: 'h3', title: 'Public Transport', description: 'Deal with inappropriate behavior', difficulty: 'Intermediate', situations: [{ dialogue: 'Move closer to me, there is no space', options: [{ text: 'Move to another seat', response: 'Creating distance is a smart safety choice.' }, { text: 'Say "Please give me space"', response: 'Using polite but firm language works well.' }, { text: 'Take out phone to record', response: 'Documentation can provide evidence if needed.' }] }] },
+        { id: 'h4', title: 'Online Harassment', description: 'Respond to harassing messages', difficulty: 'Beginner', situations: [{ dialogue: 'Send inappropriate messages', options: [{ text: 'Block and report', response: 'Blocking is the first step to protect yourself.' }, { text: 'Reply with harsh words', response: 'Engaging may escalate the situation.' }, { text: 'Save evidence', response: 'Saving evidence is important for reporting.' }] }] },
+        { id: 'h5', title: 'Verbal De-escalation', description: 'De-escalate confrontation', difficulty: 'Advanced', situations: [{ dialogue: 'Why are you looking at me? Fight me!', options: [{ text: 'Stay calm and walk away', response: 'De-escalation through ignoring works in many cases.' }, { text: 'Call for help', response: 'Getting attention from others can deter aggression.' }, { text: 'Find a safe exit', response: 'Having an exit plan is always wise.' }] }] },
     ],
     self_defense: [
-        {
-            id: 'sd1',
-            title: 'Basic Escape Techniques',
-            description: 'Learn to break free from grabs',
-            difficulty: 'Beginner',
-            techniques: [
-                { name: 'Wrist Escape', description: 'Rotate your wrist inward and pull away firmly' },
-                { name: 'Arm Break', description: 'Use your body weight to bend their arm upward' },
-            ],
-        },
-        {
-            id: 'sd2',
-            title: 'Voice Power',
-            description: 'Use your voice effectively for self-defense',
-            difficulty: 'Beginner',
-            techniques: [
-                { name: 'Scream Technique', description: 'Short, sharp screams: "HELP!" "BACK OFF!"' },
-                { name: 'Command Voice', description: 'Use a low, authoritative tone to demand space' },
-            ],
-        },
-        {
-            id: 'sd3',
-            title: 'Pressure Points',
-            description: 'Learn vulnerable points on the body',
-            difficulty: 'Intermediate',
-            techniques: [
-                { name: 'Eyes', description: 'Palm strike to eyes causes temporary blindness' },
-                { name: 'Throat', description: 'Palm or finger strike to throat' },
-                { name: 'Groin', description: 'Knee strike or palm strike' },
-            ],
-        },
-        {
-            id: 'sd4',
-            title: 'Running Safety',
-            description: 'Safe running and escape techniques',
-            difficulty: 'Beginner',
-            techniques: [
-                { name: 'Zigzag Running', description: 'Change direction unpredictably' },
-                { name: 'Make Noise', description: 'Scream while running to attract attention' },
-            ],
-        },
+        { id: 'sd1', title: 'Basic Escape', description: 'Break free from grabs', difficulty: 'Beginner', techniques: [{ name: 'Wrist Escape', desc: 'Rotate wrist inward and pull away firmly' }, { name: 'Arm Break', desc: 'Use body weight to bend arm upward' }, { name: 'Palm Strike', desc: 'Strike palm upward to create space' }] },
+        { id: 'sd2', title: 'Voice Power', description: 'Use your voice effectively', difficulty: 'Beginner', techniques: [{ name: 'Scream', desc: 'Short, sharp: "HELP!" "BACK OFF!"' }, { name: 'Command Voice', desc: 'Low, authoritative tone' }, { name: 'Distress Signal', desc: 'Attract attention by calling specific person' }] },
+        { id: 'sd3', title: 'Pressure Points', description: 'Learn vulnerable points', difficulty: 'Intermediate', techniques: [{ name: 'Eyes', desc: 'Palm strike to eyes causes temporary blindness' }, { name: 'Throat', desc: 'Palm or finger strike to throat' }, { name: 'Groin', desc: 'Knee strike or palm strike' }] },
+        { id: 'sd4', title: 'Running Safety', description: 'Safe escape techniques', difficulty: 'Beginner', techniques: [{ name: 'Zigzag Running', desc: 'Change direction unpredictably' }, { name: 'Make Noise', desc: 'Scream while running to attract attention' }, { name: 'Find Crowd', desc: 'Run toward populated areas' }] },
     ],
     digital_safety: [
-        {
-            id: 'ds1',
-            title: 'Social Media Privacy',
-            description: 'Secure your social media accounts',
-            difficulty: 'Beginner',
-            tips: [
-                'Enable two-factor authentication',
-                'Review privacy settings regularly',
-                'Limit location sharing',
-                'Be cautious with friend requests',
-            ],
-        },
-        {
-            id: 'ds2',
-            title: 'Safe Online Dating',
-            description: 'Protect yourself when dating online',
-            difficulty: 'Intermediate',
-            tips: [
-                'Use separate phone number for dating apps',
-                'Meet in public places first',
-                'Tell someone about your plans',
-                'Verify person identity before meeting',
-            ],
-        },
-        {
-            id: 'ds3',
-            title: 'Password Security',
-            description: 'Create and manage secure passwords',
-            difficulty: 'Beginner',
-            tips: [
-                'Use unique passwords for each account',
-                'Use a password manager',
-                'Enable biometric login when available',
-                'Never share passwords via text/email',
-            ],
-        },
-        {
-            id: 'ds4',
-            title: 'Device Security',
-            description: 'Protect your physical devices',
-            difficulty: 'Intermediate',
-            tips: [
-                'Set up remote wipe capability',
-                'Use screen lock always',
-                'Encrypt sensitive data',
-                'Be cautious with public WiFi',
-            ],
-        },
+        { id: 'ds1', title: 'Social Media Privacy', description: 'Secure your accounts', difficulty: 'Beginner', tips: ['Enable two-factor authentication', 'Review privacy settings regularly', 'Limit location sharing', 'Be cautious with friend requests', 'Use strong passwords'] },
+        { id: 'ds2', title: 'Safe Online Dating', description: 'Protect yourself online', difficulty: 'Intermediate', tips: ['Use separate phone number for dating apps', 'Meet in public places first', 'Tell someone about your plans', 'Verify person identity before meeting', 'Never share financial info'] },
+        { id: 'ds3', title: 'Password Security', description: 'Create secure passwords', difficulty: 'Beginner', tips: ['Use unique passwords for each account', 'Use a password manager', 'Enable biometric login when available', 'Never share passwords via text/email', 'Use passphrases'] },
+        { id: 'ds4', title: 'Device Security', description: 'Protect your devices', difficulty: 'Intermediate', tips: ['Set up remote wipe capability', 'Use screen lock always', 'Encrypt sensitive data', 'Be cautious with public WiFi', 'Keep software updated'] },
     ],
     workplace: [
-        {
-            id: 'w1',
-            title: 'Identifying Workplace Harassment',
-            description: 'Recognize different forms of harassment',
-            difficulty: 'Beginner',
-            signs: [
-                'Unwanted physical contact',
-                'Inappropriate jokes or comments',
-                'Professional opportunities withheld',
-                'Creating a hostile work environment',
-            ],
-        },
-        {
-            id: 'w2',
-            title: 'Reporting Procedures',
-            description: 'How to properly report incidents',
-            difficulty: 'Intermediate',
-            steps: [
-                'Document everything with dates',
-                'Report to HR in writing',
-                'Know your company policies',
-                'Seek external resources if needed',
-            ],
-        },
-        {
-            id: 'w3',
-            title: 'Building Workplace Support',
-            description: 'Create a support network at work',
-            difficulty: 'Beginner',
-            strategies: [
-                'Build relationships with allies',
-                'Know your rights',
-                'Keep records of support',
-                'Access employee assistance programs',
-            ],
-        },
-        {
-            id: 'w4',
-            title: 'Legal Protections',
-            description: 'Understand your legal rights',
-            difficulty: 'Advanced',
-            protections: [
-                'Title VII protections',
-                'State-specific laws',
-                'File with EEOC',
-                'Consult an attorney',
-            ],
-        },
+        { id: 'w1', title: 'Identifying Harassment', description: 'Recognize harassment forms', difficulty: 'Beginner', tips: ['Unwanted physical contact', 'Inappropriate jokes or comments', 'Professional opportunities withheld', 'Creating a hostile work environment', 'Sexual advances'] },
+        { id: 'w2', title: 'Reporting Procedures', description: 'How to report incidents', difficulty: 'Intermediate', tips: ['Document everything with dates', 'Report to HR in writing', 'Know your company policies', 'Seek external resources if needed', 'Keep copies of reports'] },
+        { id: 'w3', title: 'Building Support', description: 'Create support network', difficulty: 'Beginner', tips: ['Build relationships with allies', 'Know your rights', 'Keep records of support', 'Access employee assistance programs', 'Join support groups'] },
+        { id: 'w4', title: 'Legal Protections', description: 'Understand your rights', difficulty: 'Advanced', tips: ['Title VII protections', 'State-specific laws', 'File with EEOC', 'Consult an attorney', 'Know filing deadlines'] },
     ],
     public: [
-        {
-            id: 'p1',
-            title: 'Safe Walking',
-            description: 'Stay safe while walking alone',
-            difficulty: 'Beginner',
-            tips: [
-                'Walk with confidence',
-                'Stay in well-lit areas',
-                'Know your route',
-                'Trust your instincts',
-            ],
-        },
-        {
-            id: 'p2',
-            title: 'Ride Share Safety',
-            description: 'Use ride shares safely',
-            difficulty: 'Beginner',
-            tips: [
-                'Verify the license plate',
-                'Sit in the back seat',
-                'Share trip with friend',
-                'Trust your instincts',
-            ],
-        },
-        {
-            id: 'p3',
-            title: 'Emergency Response',
-            description: 'Know what to do in emergencies',
-            difficulty: 'Intermediate',
-            steps: [
-                'Call emergency services',
-                'Know your location',
-                'Find a safe place',
-                'Get help from bystanders',
-            ],
-        },
-        {
-            id: 'p4',
-            title: 'Self-Defense Products',
-            description: 'Legal self-defense options',
-            difficulty: 'Beginner',
-            products: [
-                'Personal alarm',
-                'Whistle',
-                'Pepper spray (where legal)',
-                'Legal weapons by state',
-            ],
-        },
+        { id: 'p1', title: 'Safe Walking', description: 'Stay safe while walking', difficulty: 'Beginner', tips: ['Walk with confidence', 'Stay in well-lit areas', 'Know your route', 'Trust your instincts', 'Avoid distracted walking'] },
+        { id: 'p2', title: 'Ride Share Safety', description: 'Use ride shares safely', difficulty: 'Beginner', tips: ['Verify the license plate', 'Sit in the back seat', 'Share trip with friend', 'Trust your instincts', 'Check driver info'] },
+        { id: 'p3', title: 'Emergency Response', description: 'Know what to do in emergencies', difficulty: 'Intermediate', tips: ['Call emergency services', 'Know your location', 'Find a safe place', 'Get help from bystanders', 'Stay calm'] },
+        { id: 'p4', title: 'Self-Defense Products', description: 'Legal self-defense options', difficulty: 'Beginner', tips: ['Personal alarm', 'Whistle', 'Pepper spray (where legal)', 'Legal weapons by state', 'Self-defense classes'] },
     ],
 };
 
+const DIFFICULTY_COLORS = { 'Beginner': '#4CAF50', 'Intermediate': '#FF9800', 'Advanced': '#F44336' };
+
 const AISafetyWorkshopScreen = ({ navigation }) => {
-    const { colors, spacing, borderRadius, shadows } = useTheme();
+    const { colors, shadows } = useTheme();
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [selectedScenario, setSelectedScenario] = useState(null);
     const [currentSituation, setCurrentSituation] = useState(0);
-    const [showScenarioModal, setShowScenarioModal] = useState(false);
-    const [userResponse, setUserResponse] = useState('');
+    const [showModal, setShowModal] = useState(false);
     const [aiResponse, setAiResponse] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [workshopProgress, setWorkshopProgress] = useState({});
+    const [loadingOption, setLoadingOption] = useState(null);
     const [showAITip, setShowAITip] = useState(false);
-
-    // Animation refs
     const fadeAnim = useRef(new Animated.Value(0)).current;
-    const slideAnim = useRef(new Animated.Value(50)).current;
+    const aiFadeAnim = useRef(new Animated.Value(0)).current;
 
-    useEffect(() => {
-        loadWorkshopProgress();
-    }, []);
+    useEffect(() => { 
+        if (showModal) { 
+            Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start(); 
+        } else { 
+            fadeAnim.setValue(0); 
+        } 
+    }, [showModal]);
 
-    useEffect(() => {
-        if (showScenarioModal) {
-            Animated.parallel([
-                Animated.timing(fadeAnim, {
-                    toValue: 1,
-                    duration: 300,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(slideAnim, {
-                    toValue: 0,
-                    duration: 300,
-                    useNativeDriver: true,
-                }),
-            ]).start();
-        } else {
-            fadeAnim.setValue(0);
-            slideAnim.setValue(50);
-        }
-    }, [showScenarioModal]);
+    useEffect(() => { 
+        if (showAITip) { 
+            Animated.timing(aiFadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start(); 
+        } else { 
+            aiFadeAnim.setValue(0); 
+        } 
+    }, [showAITip]);
 
-    const loadWorkshopProgress = async () => {
-        // Load progress from storage
-        setWorkshopProgress({
-            harassment: { completed: 2, total: 5 },
-            self_defense: { completed: 1, total: 4 },
-            digital_safety: { completed: 0, total: 4 },
-            workplace: { completed: 0, total: 4 },
-            public: { completed: 1, total: 4 },
-        });
+    const getProgressPercent = (completed, total) => {
+        if (!total || total === 0) return 0;
+        return (completed / total) * 100;
     };
 
-    const handleCategorySelect = (category) => {
-        setSelectedCategory(category);
-        setShowScenarioModal(true);
+    const handleCategorySelect = (category) => { 
+        setSelectedCategory(category); 
+        setSelectedScenario(null); 
+        setShowModal(true); 
     };
-
-    const getScenariosForCategory = (categoryId) => {
-        return SCENARIOS[categoryId] || [];
+    
+    const getScenarios = (id) => SCENARIOS[id] || [];
+    
+    const handleScenarioSelect = (scenario) => { 
+        setSelectedScenario(scenario); 
+        setCurrentSituation(0); 
+        setShowAITip(false); 
+        setAiResponse(''); 
     };
-
-    const handleScenarioSelect = (scenario) => {
-        setSelectedScenario(scenario);
+    
+    const handleOptionSelect = async (option, index) => { 
+        setLoadingOption(index);
+        const fallbackResponse = option.response;
+        
+        try { 
+            // Get API key from settings service
+            const apiKey = await settingsService.getGroqApiKey();
+            
+            const prompt = `Safety training feedback. Scenario: "${selectedScenario?.title}". User chose: "${option.text}". Give brief encouraging feedback in 1-2 sentences.`; 
+            const response = await groqApi.generateResponse(prompt, apiKey); 
+            setAiResponse(response || fallbackResponse); 
+        } catch (e) { 
+            setAiResponse(fallbackResponse); 
+        } 
+        
+        setLoadingOption(null);
+        setShowAITip(true); 
+    };
+    
+    const handleNext = () => { 
+        const hasMoreSituations = selectedScenario?.situations && currentSituation < selectedScenario.situations.length - 1;
+        
+        if (hasMoreSituations) { 
+            setCurrentSituation(currentSituation + 1); 
+            setShowAITip(false); 
+            setAiResponse(''); 
+        } else { 
+            Alert.alert('Completed!', 'Great job completing this workshop!', [
+                { text: 'Back to Categories', onPress: () => closeModal() },
+                { text: 'Stay', style: 'cancel' }
+            ]); 
+        } 
+    };
+    
+    const getProgress = (id) => { 
+        const progress = { harassment: 2, self_defense: 1, digital_safety: 0, workplace: 0, public: 1 }; 
+        return progress[id] || 0; 
+    };
+    
+    const closeModal = () => { 
+        setShowModal(false); 
+        setSelectedCategory(null); 
+        setSelectedScenario(null); 
+        setShowAITip(false); 
         setCurrentSituation(0);
     };
 
-    const handleOptionSelect = async (option) => {
-        setIsLoading(true);
-
-        // Get AI response based on user's choice
-        try {
-            const prompt = `You are a safety training AI assistant. A user is practicing a harassment awareness scenario. 
-            
-Scenario: ${selectedScenario?.title}
-User chose: ${option.text}
-Expected response from trainer: ${option.response}
-
-Provide a brief, encouraging feedback message (2-3 sentences) to help the user learn.`;
-
-            const response = await groqApi.generateResponse(prompt);
-            setAiResponse(response || option.response);
-        } catch (error) {
-            // Fallback to predefined response
-            setAiResponse(option.response);
-        }
-
-        setIsLoading(false);
-        setShowAITip(true);
+    const handleBackFromScenario = () => {
+        setSelectedScenario(null);
+        setShowAITip(false);
+        setAiResponse('');
+        setCurrentSituation(0);
     };
 
-    const handleNextSituation = () => {
-        if (selectedScenario?.situations && currentSituation < selectedScenario.situations.length - 1) {
-            setCurrentSituation(currentSituation + 1);
-            setShowAITip(false);
-            setAiResponse('');
-        } else {
-            // Workshop completed
-            Alert.alert(
-                'Workshop Completed! 🎉',
-                'Great job completing this safety training scenario!',
-                [
-                    {
-                        text: 'Back to Categories',
-                        onPress: () => {
-                            setShowScenarioModal(false);
-                            setSelectedScenario(null);
-                            setShowAITip(false);
-                        },
-                    },
-                ]
-            );
-        }
-    };
-
-    const renderCategoryCard = ({ item }) => (
-        <TouchableOpacity
-            style={[styles.categoryCard, { backgroundColor: colors.card, ...shadows.small }]}
+    const renderCategory = ({ item }) => (
+        <TouchableOpacity 
+            style={[styles.categoryCard, { backgroundColor: colors.card, ...shadows.sm }]} 
             onPress={() => handleCategorySelect(item)}
         >
             <View style={[styles.categoryIcon, { backgroundColor: item.color + '20' }]}>
-                <Ionicons name={item.icon} size={32} color={item.color} />
+                <Ionicons name={item.icon} size={24} color={item.color} />
             </View>
             <View style={styles.categoryInfo}>
                 <Text style={[styles.categoryTitle, { color: colors.text }]}>{item.title}</Text>
-                <Text style={[styles.categoryDesc, { color: colors.gray }]} numberOfLines={2}>
-                    {item.description}
-                </Text>
+                <Text style={[styles.categoryDesc, { color: colors.gray }]} numberOfLines={1}>{item.description}</Text>
                 <View style={styles.progressContainer}>
                     <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
-                        <View
-                            style={[
-                                styles.progressFill,
-                                {
-                                    backgroundColor: item.color,
-                                    width: `${((workshopProgress[item.id]?.completed || 0) / item.scenarios) * 100}%`
-                                }
-                            ]}
-                        />
+                        <View style={[styles.progressFill, { backgroundColor: item.color, width: `${getProgressPercent(getProgress(item.id), item.scenarios)}%` }]} />
                     </View>
-                    <Text style={[styles.progressText, { color: colors.gray }]}>
-                        {workshopProgress[item.id]?.completed || 0}/{item.scenarios}
-                    </Text>
+                    <Text style={[styles.progressText, { color: colors.gray }]}>{getProgress(item.id)}/{item.scenarios}</Text>
                 </View>
             </View>
-            <Ionicons name="chevron-forward" size={24} color={colors.gray} />
+            <Ionicons name="chevron-forward" size={20} color={colors.gray} />
         </TouchableOpacity>
     );
 
-    const renderScenarioCard = ({ item }) => (
-        <TouchableOpacity
-            style={[styles.scenarioCard, { backgroundColor: colors.card, ...shadows.small }]}
+    const renderScenario = ({ item }) => (
+        <TouchableOpacity 
+            style={[styles.scenarioCard, { backgroundColor: colors.card, ...shadows.sm }]} 
             onPress={() => handleScenarioSelect(item)}
         >
             <View style={styles.scenarioHeader}>
                 <Text style={[styles.scenarioTitle, { color: colors.text }]}>{item.title}</Text>
-                <View style={[styles.difficultyBadge, {
-                    backgroundColor: item.difficulty === 'Beginner' ? '#4CAF50' + '20' :
-                        item.difficulty === 'Intermediate' ? '#FF9800' + '20' : '#F44336' + '20'
-                }]}>
-                    <Text style={[styles.difficultyText, {
-                        color: item.difficulty === 'Beginner' ? '#4CAF50' :
-                            item.difficulty === 'Intermediate' ? '#FF9800' : '#F44336'
-                    }]}>{item.difficulty}</Text>
+                <View style={[styles.difficultyBadge, { backgroundColor: (DIFFICULTY_COLORS[item.difficulty] || '#999') + '20' }]}>
+                    <Text style={[styles.difficultyText, { color: DIFFICULTY_COLORS[item.difficulty] || '#999' }]}>{item.difficulty}</Text>
                 </View>
             </View>
-            <Text style={[styles.scenarioDesc, { color: colors.gray }]}>{item.description}</Text>
+            <Text style={[styles.scenarioDesc, { color: colors.gray }]} numberOfLines={1}>{item.description}</Text>
         </TouchableOpacity>
     );
 
+    const renderScenarioContent = () => {
+        if (!selectedScenario) return null;
+        const scenario = selectedScenario;
+        const hasSituations = scenario.situations && scenario.situations.length > 0;
+        const hasTechniques = scenario.techniques && scenario.techniques.length > 0;
+        const hasTips = scenario.tips && scenario.tips.length > 0;
+        
+        return (
+            <ScrollView style={styles.activeScenario} showsVerticalScrollIndicator={false}>
+                <TouchableOpacity style={styles.backBtnRow} onPress={handleBackFromScenario}>
+                    <Ionicons name="arrow-back" size={18} color={colors.gray} />
+                    <Text style={[styles.backBtnText, { color: colors.gray }]}>Back to list</Text>
+                </TouchableOpacity>
+                
+                <View style={[styles.scenarioTitleCard, { backgroundColor: colors.card, ...shadows.sm }]}>
+                    <Text style={[styles.scenarioActiveTitle, { color: colors.text }]}>{scenario.title}</Text>
+                    <Text style={[styles.scenarioActiveDesc, { color: colors.gray }]}>{scenario.description}</Text>
+                </View>
+                
+                {hasSituations && (
+                    <View style={[styles.situationCard, { backgroundColor: colors.card, ...shadows.sm }]}>
+                        <View style={styles.situationHeader}>
+                            <Text style={[styles.situationLabel, { color: colors.primary }]}>Practice Scenario</Text>
+                            <Text style={[styles.situationProgress, { color: colors.gray }]}>{currentSituation + 1}/{scenario.situations.length}</Text>
+                        </View>
+                        <Text style={[styles.situationDialogue, { color: colors.text }]}>"{scenario.situations[currentSituation]?.dialogue}"</Text>
+                        
+                        {scenario.situations[currentSituation]?.options && (
+                            <View style={styles.optionsContainer}>
+                                {scenario.situations[currentSituation].options.map((option, index) => (
+                                    <TouchableOpacity 
+                                        key={index} 
+                                        style={[styles.optionBtn, { backgroundColor: colors.card, borderColor: colors.border }]} 
+                                        onPress={() => handleOptionSelect(option, index)}
+                                        disabled={loadingOption !== null}
+                                    >
+                                        {loadingOption === index ? (
+                                            <ActivityIndicator size="small" color={colors.primary} />
+                                        ) : (
+                                            <Text style={[styles.optionText, { color: colors.text }]}>{option.text}</Text>
+                                        )}
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        )}
+                    </View>
+                )}
+
+                {showAITip && (
+                    <Animated.View style={[styles.aiResponseCard, { opacity: aiFadeAnim }]}>
+                        <View style={styles.aiResponseHeader}>
+                            <Ionicons name="sparkles" size={18} color="#FFD700" />
+                            <Text style={[styles.aiResponseTitle, { color: colors.text }]}>AI Feedback</Text>
+                        </View>
+                        <Text style={[styles.aiResponseText, { color: colors.gray }]}>{aiResponse}</Text>
+                        {hasSituations && (
+                            <TouchableOpacity style={[styles.nextBtn, { backgroundColor: colors.primary }]} onPress={handleNext}>
+                                <Text style={styles.nextBtnText}>
+                                    {currentSituation < scenario.situations.length - 1 ? 'Next Situation' : 'Complete'}
+                                </Text>
+                                <Ionicons name="arrow-forward" size={18} color="#fff" />
+                            </TouchableOpacity>
+                        )}
+                    </Animated.View>
+                )}
+
+                {hasTechniques && (
+                    <View style={styles.contentSection}>
+                        <Text style={[styles.sectionSubtitle, { color: colors.text }]}>Techniques</Text>
+                        {scenario.techniques.map((tech, i) => (
+                            <View key={i} style={[styles.techniqueCard, { backgroundColor: colors.card, ...shadows.sm }]}>
+                                <Ionicons name="fitness" size={20} color={colors.primary} />
+                                <View style={styles.techniqueInfo}>
+                                    <Text style={[styles.techniqueName, { color: colors.text }]}>{tech.name}</Text>
+                                    <Text style={[styles.techniqueDesc, { color: colors.gray }]}>{tech.desc}</Text>
+                                </View>
+                            </View>
+                        ))}
+                    </View>
+                )}
+
+                {hasTips && (
+                    <View style={styles.contentSection}>
+                        <Text style={[styles.sectionSubtitle, { color: colors.text }]}>Safety Tips</Text>
+                        {scenario.tips.map((tip, i) => (
+                            <View key={i} style={[styles.tipCard, { backgroundColor: colors.card, ...shadows.sm }]}>
+                                <View style={[styles.tipNumber, { backgroundColor: colors.primary + '20' }]}>
+                                    <Text style={[styles.tipNumberText, { color: colors.primary }]}>{i + 1}</Text>
+                                </View>
+                                <Text style={[styles.tipText, { color: colors.text }]}>{tip}</Text>
+                            </View>
+                        ))}
+                    </View>
+                )}
+                
+                {!hasSituations && !hasTechniques && !hasTips && (
+                    <Text style={[styles.noContent, { color: colors.gray }]}>Content coming soon...</Text>
+                )}
+
+                {!hasSituations && (hasTechniques || hasTips) && (
+                    <TouchableOpacity style={[styles.completeBtn, { backgroundColor: colors.primary }]} onPress={() => Alert.alert('Completed!', 'Great job completing this workshop!', [{ text: 'Back', onPress: handleBackFromScenario }])}>
+                        <Text style={styles.completeBtnText}>Mark as Complete</Text>
+                        <Ionicons name="checkmark" size={18} color="#fff" />
+                    </TouchableOpacity>
+                )}
+            </ScrollView>
+        );
+    };
+
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
-            {/* Header */}
             <View style={[styles.header, { backgroundColor: colors.primary }]}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                    <Ionicons name="arrow-back" size={24} color="#fff" />
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBackBtn}>
+                    <Ionicons name="arrow-back" size={22} color="#fff" />
                 </TouchableOpacity>
                 <View style={styles.headerContent}>
-                    <Ionicons name="school" size={28} color="#fff" />
+                    <Ionicons name="school" size={22} color="#fff" />
                     <Text style={styles.headerTitle}>AI Safety Workshops</Text>
                 </View>
-                <View style={styles.headerRight}>
-                    <Ionicons name="trophy" size={24} color="#fff" />
-                </View>
+                <TouchableOpacity style={styles.headerRight}>
+                    <Ionicons name="trophy" size={22} color="#fff" />
+                </TouchableOpacity>
             </View>
-
-            {/* Progress Summary */}
-            <View style={[styles.progressSummary, { backgroundColor: colors.card, ...shadows.small }]}>
+            
+            <View style={[styles.progressSummary, { backgroundColor: colors.card, ...shadows.sm }]}>
                 <View style={styles.progressStat}>
                     <Text style={[styles.progressNumber, { color: colors.primary }]}>4</Text>
-                    <Text style={[styles.progressLabel, { color: colors.gray }]}>Completed</Text>
+                    <Text style={[styles.progressLabel, { color: colors.gray }]}>Done</Text>
                 </View>
                 <View style={styles.progressDivider} />
                 <View style={styles.progressStat}>
@@ -507,154 +324,49 @@ Provide a brief, encouraging feedback message (2-3 sentences) to help the user l
                 </View>
                 <View style={styles.progressDivider} />
                 <View style={styles.progressStat}>
-                    <Text style={[styles.progressNumber, { color: colors.primary }]}>3</Text>
-                    <Text style={[styles.progressLabel, { color: colors.gray }]}>Hours</Text>
+                    <Text style={[styles.progressNumber, { color: colors.primary }]}>3h</Text>
+                    <Text style={[styles.progressLabel, { color: colors.gray }]}>Saved</Text>
                 </View>
             </View>
-
-            {/* Workshop Categories */}
+            
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Choose a Workshop</Text>
-
-            <FlatList
-                data={WORKSHOP_CATEGORIES}
-                renderItem={renderCategoryCard}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.categoryList}
-                showsVerticalScrollIndicator={false}
+            <FlatList 
+                data={WORKSHOP_CATEGORIES} 
+                renderItem={renderCategory} 
+                keyExtractor={(item) => item.id} 
+                contentContainerStyle={styles.categoryList} 
+                showsVerticalScrollIndicator={false} 
             />
-
-            {/* Scenario Selection Modal */}
-            <Modal visible={showScenarioModal} animationType="slide" transparent>
+            
+            <Modal visible={showModal} animationType="slide" transparent onRequestClose={closeModal}>
                 <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-                    <View style={[styles.modalContent, { backgroundColor: colors.background, ...shadows.large }]}>
+                    <View style={[styles.modalContent, { backgroundColor: colors.background }]} key={selectedScenario?.id || 'scenarios'}>
                         <View style={styles.modalHeader}>
-                            <Text style={[styles.modalTitle, { color: colors.text }]}>
-                                {selectedCategory?.title}
-                            </Text>
-                            <TouchableOpacity onPress={() => setShowScenarioModal(false)}>
+                            <TouchableOpacity onPress={closeModal} style={styles.closeBtn}>
                                 <Ionicons name="close" size={24} color={colors.gray} />
                             </TouchableOpacity>
+                            <Text style={[styles.modalTitle, { color: colors.text }]} numberOfLines={1}>
+                                {selectedScenario ? selectedScenario.title : (selectedCategory?.title || '')}
+                            </Text>
+                            <View style={styles.closeBtn} />
                         </View>
-
-                        {!selectedScenario ? (
-                            <FlatList
-                                data={getScenariosForCategory(selectedCategory?.id)}
-                                renderItem={renderScenarioCard}
-                                keyExtractor={(item) => item.id}
-                                contentContainerStyle={styles.scenarioList}
-                            />
+                        
+                        {selectedScenario ? (
+                            renderScenarioContent()
                         ) : (
-                            // Active Scenario View
-                            <ScrollView style={styles.activeScenario}>
-                                <Text style={[styles.scenarioActiveTitle, { color: colors.text }]}>
-                                    {selectedScenario.title}
-                                </Text>
-                                <Text style={[styles.scenarioActiveDesc, { color: colors.gray }]}>
-                                    {selectedScenario.description}
-                                </Text>
-
-                                {selectedScenario.situations?.length > 0 && (
-                                    <View style={[styles.situationCard, { backgroundColor: colors.card, ...shadows.small }]}>
-                                        <Text style={[styles.situationLabel, { color: colors.primary }]}>
-                                            Situation {currentSituation + 1}
-                                        </Text>
-                                        <Text style={[styles.situationDialogue, { color: colors.text }]}>
-                                            {selectedScenario.situations[currentSituation]?.role === 'aggressor'
-                                                ? selectedScenario.situations[currentSituation]?.dialogue
-                                                : 'Practice your response'}
-                                        </Text>
-
-                                        {/* Response Options */}
-                                        {selectedScenario.situations[currentSituation]?.options && (
-                                            <View style={styles.optionsContainer}>
-                                                {selectedScenario.situations[currentSituation].options.map((option, index) => (
-                                                    <TouchableOpacity
-                                                        key={index}
-                                                        style={[styles.optionBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
-                                                        onPress={() => handleOptionSelect(option)}
-                                                        disabled={isLoading}
-                                                    >
-                                                        <Text style={[styles.optionText, { color: colors.text }]}>{option.text}</Text>
-                                                    </TouchableOpacity>
-                                                ))}
-                                            </View>
-                                        )}
+                            <FlatList 
+                                data={getScenarios(selectedCategory?.id)} 
+                                renderItem={renderScenario} 
+                                keyExtractor={(item) => item.id} 
+                                contentContainerStyle={styles.scenarioList} 
+                                showsVerticalScrollIndicator={false} 
+                                ListEmptyComponent={
+                                    <View style={styles.emptyContainer}>
+                                        <Ionicons name="folder-open" size={48} color={colors.gray + '50'} />
+                                        <Text style={[styles.emptyText, { color: colors.gray }]}>No scenarios available</Text>
                                     </View>
-                                )}
-
-                                {/* AI Response */}
-                                {showAITip && (
-                                    <Animated.View style={[styles.aiResponseCard, { opacity: fadeAnim }]}>
-                                        <View style={styles.aiResponseHeader}>
-                                            <Ionicons name="sparkles" size={20} color="#FFD700" />
-                                            <Text style={[styles.aiResponseTitle, { color: colors.text }]}>
-                                                AI Feedback
-                                            </Text>
-                                        </View>
-                                        <Text style={[styles.aiResponseText, { color: colors.gray }]}>
-                                            {aiResponse}
-                                        </Text>
-                                        <TouchableOpacity
-                                            style={[styles.nextBtn, { backgroundColor: colors.primary }]}
-                                            onPress={handleNextSituation}
-                                        >
-                                            <Text style={styles.nextBtnText}>Continue</Text>
-                                            <Ionicons name="arrow-forward" size={20} color="#fff" />
-                                        </TouchableOpacity>
-                                    </Animated.View>
-                                )}
-
-                                {/* Tips & Techniques */}
-                                {selectedScenario.techniques && (
-                                    <View style={styles.techniquesContainer}>
-                                        <Text style={[styles.sectionSubtitle, { color: colors.text }]}>
-                                            Techniques to Practice
-                                        </Text>
-                                        {selectedScenario.techniques.map((technique, index) => (
-                                            <View key={index} style={[styles.techniqueCard, { backgroundColor: colors.card, ...shadows.small }]}>
-                                                <Ionicons name="fitness" size={24} color={colors.primary} />
-                                                <View style={styles.techniqueInfo}>
-                                                    <Text style={[styles.techniqueName, { color: colors.text }]}>
-                                                        {technique.name}
-                                                    </Text>
-                                                    <Text style={[styles.techniqueDesc, { color: colors.gray }]}>
-                                                        {technique.description}
-                                                    </Text>
-                                                </View>
-                                            </View>
-                                        ))}
-                                    </View>
-                                )}
-
-                                {/* Safety Tips */}
-                                {selectedScenario.tips && (
-                                    <View style={styles.tipsContainer}>
-                                        <Text style={[styles.sectionSubtitle, { color: colors.text }]}>
-                                            Safety Tips
-                                        </Text>
-                                        {selectedScenario.tips.map((tip, index) => (
-                                            <View key={index} style={[styles.tipCard, { backgroundColor: colors.card, ...shadows.small }]}>
-                                                <View style={[styles.tipNumber, { backgroundColor: colors.primary + '20' }]}>
-                                                    <Text style={[styles.tipNumberText, { color: colors.primary }]}>
-                                                        {index + 1}
-                                                    </Text>
-                                                </View>
-                                                <Text style={[styles.tipText, { color: colors.text }]}>{tip}</Text>
-                                            </View>
-                                        ))}
-                                    </View>
-                                )}
-
-                                <TouchableOpacity
-                                    style={[styles.backCategoryBtn, { borderColor: colors.border }]}
-                                    onPress={() => setSelectedScenario(null)}
-                                >
-                                    <Ionicons name="arrow-back" size={20} color={colors.gray} />
-                                    <Text style={[styles.backCategoryText, { color: colors.gray }]}>
-                                        Back to Scenarios
-                                    </Text>
-                                </TouchableOpacity>
-                            </ScrollView>
+                                } 
+                            />
                         )}
                     </View>
                 </View>
@@ -664,302 +376,75 @@ Provide a brief, encouraging feedback message (2-3 sentences) to help the user l
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    header: {
-        paddingTop: 50,
-        paddingBottom: 20,
-        paddingHorizontal: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    backBtn: {
-        padding: 8,
-    },
-    headerContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    headerTitle: {
-        fontSize: 20,
-        fontWeight: '600',
-        color: '#fff',
-    },
-    headerRight: {
-        padding: 8,
-    },
-    progressSummary: {
-        flexDirection: 'row',
-        margin: 16,
-        padding: 16,
-        borderRadius: 16,
-        justifyContent: 'space-around',
-    },
-    progressStat: {
-        alignItems: 'center',
-    },
-    progressNumber: {
-        fontSize: 24,
-        fontWeight: '700',
-    },
-    progressLabel: {
-        fontSize: 12,
-        marginTop: 4,
-    },
-    progressDivider: {
-        width: 1,
-        backgroundColor: '#E0E0E0',
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        marginHorizontal: 16,
-        marginBottom: 12,
-    },
-    categoryList: {
-        paddingHorizontal: 16,
-        paddingBottom: 20,
-    },
-    categoryCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        borderRadius: 16,
-        marginBottom: 12,
-    },
-    categoryIcon: {
-        width: 60,
-        height: 60,
-        borderRadius: 16,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    categoryInfo: {
-        flex: 1,
-        marginLeft: 12,
-    },
-    categoryTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    categoryDesc: {
-        fontSize: 12,
-        marginTop: 4,
-    },
-    progressContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 8,
-        gap: 8,
-    },
-    progressBar: {
-        flex: 1,
-        height: 4,
-        borderRadius: 2,
-    },
-    progressFill: {
-        height: '100%',
-        borderRadius: 2,
-    },
-    progressText: {
-        fontSize: 12,
-    },
-
-    // Modal Styles
-    modalOverlay: {
-        flex: 1,
-        justifyContent: 'flex-end',
-    },
-    modalContent: {
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        padding: 20,
-        maxHeight: '90%',
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    modalTitle: {
-        fontSize: 20,
-        fontWeight: '600',
-    },
-    scenarioList: {
-        paddingBottom: 20,
-    },
-    scenarioCard: {
-        padding: 16,
-        borderRadius: 12,
-        marginBottom: 12,
-    },
-    scenarioHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    scenarioTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    difficultyBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 8,
-    },
-    difficultyText: {
-        fontSize: 10,
-        fontWeight: '600',
-    },
-    scenarioDesc: {
-        fontSize: 12,
-    },
-
-    // Active Scenario
-    activeScenario: {
-        flex: 1,
-    },
-    scenarioActiveTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        marginBottom: 8,
-    },
-    scenarioActiveDesc: {
-        fontSize: 14,
-        marginBottom: 20,
-    },
-    situationCard: {
-        padding: 16,
-        borderRadius: 12,
-        marginBottom: 16,
-    },
-    situationLabel: {
-        fontSize: 12,
-        fontWeight: '600',
-        marginBottom: 8,
-    },
-    situationDialogue: {
-        fontSize: 16,
-        fontStyle: 'italic',
-        lineHeight: 24,
-    },
-    optionsContainer: {
-        marginTop: 16,
-        gap: 8,
-    },
-    optionBtn: {
-        padding: 14,
-        borderRadius: 12,
-        borderWidth: 1,
-    },
-    optionText: {
-        fontSize: 14,
-    },
-    aiResponseCard: {
-        backgroundColor: '#FFF9C4',
-        padding: 16,
-        borderRadius: 12,
-        marginBottom: 16,
-    },
-    aiResponseHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginBottom: 8,
-    },
-    aiResponseTitle: {
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    aiResponseText: {
-        fontSize: 14,
-        lineHeight: 20,
-        marginBottom: 12,
-    },
-    nextBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 12,
-        borderRadius: 12,
-        gap: 8,
-    },
-    nextBtnText: {
-        color: '#fff',
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    techniquesContainer: {
-        marginBottom: 20,
-    },
-    sectionSubtitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        marginBottom: 12,
-    },
-    techniqueCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 12,
-        borderRadius: 12,
-        marginBottom: 8,
-        gap: 12,
-    },
-    techniqueInfo: {
-        flex: 1,
-    },
-    techniqueName: {
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    techniqueDesc: {
-        fontSize: 12,
-        marginTop: 2,
-    },
-    tipsContainer: {
-        marginBottom: 20,
-    },
-    tipCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 12,
-        borderRadius: 12,
-        marginBottom: 8,
-        gap: 12,
-    },
-    tipNumber: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    tipNumberText: {
-        fontSize: 12,
-        fontWeight: '600',
-    },
-    tipText: {
-        flex: 1,
-        fontSize: 14,
-    },
-    backCategoryBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 14,
-        borderRadius: 12,
-        borderWidth: 1,
-        gap: 8,
-        marginBottom: 20,
-    },
-    backCategoryText: {
-        fontSize: 14,
-    },
+    container: { flex: 1 },
+    header: { paddingTop: 50, paddingBottom: 16, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    headerBackBtn: { padding: 6 },
+    headerContent: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    headerTitle: { fontSize: 18, fontWeight: '600', color: '#fff' },
+    headerRight: { padding: 6 },
+    progressSummary: { flexDirection: 'row', margin: 12, padding: 14, borderRadius: 12, justifyContent: 'space-around' },
+    progressStat: { alignItems: 'center' },
+    progressNumber: { fontSize: 20, fontWeight: '700' },
+    progressLabel: { fontSize: 11, marginTop: 2 },
+    progressDivider: { width: 1, backgroundColor: '#E0E0E0' },
+    sectionTitle: { fontSize: 16, fontWeight: '600', marginHorizontal: 16, marginBottom: 10 },
+    categoryList: { paddingHorizontal: 16, paddingBottom: 20 },
+    categoryCard: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 14, marginBottom: 10 },
+    categoryIcon: { width: 52, height: 52, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+    categoryInfo: { flex: 1, marginLeft: 12 },
+    categoryTitle: { fontSize: 15, fontWeight: '600' },
+    categoryDesc: { fontSize: 12, marginTop: 2 },
+    progressContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 8 },
+    progressBar: { flex: 1, height: 4, borderRadius: 2 },
+    progressFill: { height: '100%', borderRadius: 2 },
+    progressText: { fontSize: 11 },
+    modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
+    modalContent: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '90%' },
+    modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+    closeBtn: { width: 32, height: 32, justifyContent: 'center', alignItems: 'center' },
+    modalTitle: { fontSize: 18, fontWeight: '600', flex: 1, textAlign: 'center' },
+    scenarioList: { paddingBottom: 20 },
+    scenarioCard: { padding: 14, borderRadius: 12, marginBottom: 10 },
+    scenarioHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+    scenarioTitle: { fontSize: 15, fontWeight: '600' },
+    difficultyBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+    difficultyText: { fontSize: 10, fontWeight: '600' },
+    scenarioDesc: { fontSize: 12 },
+    emptyContainer: { alignItems: 'center', paddingTop: 40 },
+    emptyText: { textAlign: 'center', marginTop: 12, fontSize: 14 },
+    activeScenario: { flex: 1 },
+    backBtnRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 },
+    backBtnText: { fontSize: 14 },
+    scenarioTitleCard: { padding: 16, borderRadius: 14, marginBottom: 16 },
+    scenarioActiveTitle: { fontSize: 20, fontWeight: '700', marginBottom: 6 },
+    scenarioActiveDesc: { fontSize: 14 },
+    situationCard: { padding: 16, borderRadius: 14, marginBottom: 16 },
+    situationHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+    situationLabel: { fontSize: 12, fontWeight: '600' },
+    situationProgress: { fontSize: 12 },
+    situationDialogue: { fontSize: 15, fontStyle: 'italic', lineHeight: 24, marginBottom: 16 },
+    optionsContainer: { gap: 8 },
+    optionBtn: { padding: 14, borderRadius: 12, borderWidth: 1, alignItems: 'center', minHeight: 48, justifyContent: 'center' },
+    optionText: { fontSize: 14 },
+    aiResponseCard: { backgroundColor: '#FFF9C4', padding: 16, borderRadius: 14, marginBottom: 16 },
+    aiResponseHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+    aiResponseTitle: { fontSize: 14, fontWeight: '600' },
+    aiResponseText: { fontSize: 14, lineHeight: 20, marginBottom: 12 },
+    nextBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 14, borderRadius: 12, gap: 8 },
+    nextBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+    contentSection: { marginBottom: 20 },
+    sectionSubtitle: { fontSize: 16, fontWeight: '600', marginBottom: 12 },
+    techniqueCard: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12, marginBottom: 8, gap: 12 },
+    techniqueInfo: { flex: 1 },
+    techniqueName: { fontSize: 14, fontWeight: '600' },
+    techniqueDesc: { fontSize: 12, marginTop: 2 },
+    tipCard: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12, marginBottom: 8, gap: 12 },
+    tipNumber: { width: 26, height: 26, borderRadius: 13, justifyContent: 'center', alignItems: 'center' },
+    tipNumberText: { fontSize: 12, fontWeight: '600' },
+    tipText: { flex: 1, fontSize: 14 },
+    noContent: { textAlign: 'center', marginTop: 40, fontSize: 14 },
+    completeBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 14, borderRadius: 12, marginTop: 20, gap: 8 },
+    completeBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 });
 
 export default AISafetyWorkshopScreen;
