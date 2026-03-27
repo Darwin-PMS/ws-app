@@ -506,7 +506,7 @@ const styles = StyleSheet.create({
     safetyProgressText: { fontSize: 12, textAlign: 'center' },
     achievementsCard: { borderRadius: 22, padding: 20, marginBottom: 16 },
     achievementsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 },
-    achievementsBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, backgroundColor: colors.primary + '15' },
+    achievementsBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, backgroundColor: '#8B5CF620' },
     achievementsBadgeText: { fontSize: 12, fontWeight: '600' },
     achievementsGrid: { flexDirection: 'row', justifyContent: 'space-around' },
     achievementItem: { alignItems: 'center', position: 'relative' },

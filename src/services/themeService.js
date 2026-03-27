@@ -11,16 +11,16 @@ const CACHE_DURATION = 24 * 60 * 60 * 1000;
 
 export const themeService = {
     async getCurrentTheme() {
-        return mobileApi.get(ENDPOINTS.theme.current);
+        return mobileApi.get(ENDPOINTS.theme.current, { skipAuth: true });
     },
 
     async getAllThemes() {
-        return mobileApi.get(ENDPOINTS.theme.all);
+        return mobileApi.get(ENDPOINTS.theme.all, { skipAuth: true });
     },
 
     async getThemePreference() {
         try {
-            return await mobileApi.get(ENDPOINTS.theme.preference);
+            return await mobileApi.get(ENDPOINTS.theme.preference, { skipAuth: true });
         } catch (error) {
             console.log('Theme preference fetch failed:', error);
             return null;

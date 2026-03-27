@@ -4,7 +4,7 @@
 export { AppProvider, useApp, USER_ROLES, ROLE_NAMES, AVAILABLE_MODELS, SYSTEM_PROMPTS } from './AppContext';
 export { ThemeProvider, useTheme } from './ThemeContext';
 export { MenuProvider, useMenu } from './MenuContext';
-export { PermissionProvider, usePermission } from './PermissionContext';
+export { PermissionProvider, usePermission, usePermissions } from './PermissionContext';
 export { ChildCareProvider, useChildCare } from './ChildCareContext';
 
 // New Contexts (added for complete API integration)

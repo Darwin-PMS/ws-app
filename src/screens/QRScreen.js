@@ -477,13 +477,13 @@ const QRScreen = ({ navigation }) => {
     );
 
     const getTypeColor = (type) => {
-        const colors = {
+        const typeColors = {
             profile: '#6366f1',
             permission: '#10b981',
             emergency: '#ef4444',
             temp_access: '#f59e0b',
         };
-        return colors[type] || '#6366f1';
+        return typeColors[type] || '#6366f1';
     };
 
     if (loading) {
