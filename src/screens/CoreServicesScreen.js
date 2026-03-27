@@ -1,23 +1,9 @@
 import React, { useMemo, useState, useRef } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    ScrollView,
-    Alert,
-    ActivityIndicator,
-    Dimensions,
-    Animated,
-    TextInput,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Animated, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useSecondaryMenu } from '../context/MenuContext';
 import { useNavigation } from '@react-navigation/native';
-
-const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - 48) / 2;
 
 const CATEGORY_ICONS = {
     'Emergency': 'warning-outline',
@@ -27,11 +13,11 @@ const CATEGORY_ICONS = {
     'Smart': 'bulb-outline',
     'Tools': 'construct-outline',
     'Community': 'people-circle-outline',
-    'default': 'apps-outline',
+    'Default': 'apps-outline',
 };
 
 const CoreServicesScreen = () => {
-    const { colors, spacing, borderRadius, shadows } = useTheme();
+    const { colors, shadows } = useTheme();
     const { items: menuItems, isLoading, isInitialized } = useSecondaryMenu();
     const navigation = useNavigation();
     const [searchQuery, setSearchQuery] = useState('');
@@ -62,7 +48,7 @@ const CoreServicesScreen = () => {
                     route: item.route,
                     screen: screenName,
                     children: item.children || [],
-                    category: item.category || 'default',
+                    category: item.category || 'Default',
                 };
             });
         }
@@ -76,7 +62,7 @@ const CoreServicesScreen = () => {
 
         const groups = {};
         filtered.forEach(service => {
-            const cat = service.category || 'default';
+            const cat = service.category || 'Default';
             if (!groups[cat]) groups[cat] = [];
             groups[cat].push(service);
         });
@@ -84,69 +70,25 @@ const CoreServicesScreen = () => {
         return groups;
     }, [menuItems, isLoading, isInitialized, colors, searchQuery]);
 
-    const toggleSearch = () => {
-        const toValue = showSearch ? 0 : 1;
-        Animated.timing(searchAnim, {
-            toValue,
-            duration: 200,
-            useNativeDriver: false,
-        }).start();
-        if (showSearch) setSearchQuery('');
-        setShowSearch(!showSearch);
-    };
-
     const handleServicePress = (service) => {
-        if (service.children && service.children.length > 0) {
-            const options = service.children
-                .filter(child => child.isVisible !== false)
-                .map(child => ({
-                    text: child.label || child.name,
-                    onPress: () => {
-                        const route = child.route || child.screen || child.name;
-                        if (route) navigation.navigate(route);
-                    },
-                }));
-
-            if (options.length > 0) {
-                Alert.alert(service.title, 'Choose an option:', options.concat([{ text: 'Cancel', style: 'cancel' }]));
-                return;
-            }
+        if (service.children?.length > 0) {
+            const options = service.children.filter(c => c.isVisible !== false).map(c => ({ text: c.label || c.name, onPress: () => navigation.navigate(c.route || c.screen || c.name) }));
+            if (options.length > 0) { Alert.alert(service.title, 'Choose an option:', options.concat([{ text: 'Cancel', style: 'cancel' }])); return; }
         }
-
         if (service.screen || service.route) {
-            let screenName = service.screen;
-            if (!screenName && service.route) {
-                screenName = service.route
-                    .replace(/^\//, '')
-                    .split('-')
-                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                    .join('');
-            }
-            if (screenName) navigation.navigate(screenName);
+            let sn = service.screen || service.route.replace(/^\//, '').split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('');
+            if (sn) navigation.navigate(sn);
         }
     };
 
-    const getCategoryIcon = (category) => CATEGORY_ICONS[category] || CATEGORY_ICONS.default;
-    const getCategoryColor = (category) => {
-        const catColors = {
-            'Emergency': '#DC2626',
-            'Safety': '#10B981',
-            'Family': '#8B5CF6',
-            'AI': '#8B5CF6',
-            'Smart': '#3B82F6',
-            'Tools': '#F59E0B',
-            'Community': '#14B8A6',
-        };
-        return catColors[category] || colors.primary;
-    };
+    const toggleSearch = () => { const to = showSearch ? 0 : 1; Animated.timing(searchAnim, { toValue: to, duration: 200, useNativeDriver: false }).start(); if (showSearch) setSearchQuery(''); setShowSearch(!showSearch); };
+
+    const catColors = { 'Emergency': '#DC2626', 'Safety': '#10B981', 'Family': '#8B5CF6', 'AI': '#8B5CF6', 'Smart': '#3B82F6', 'Tools': '#F59E0B', 'Community': '#14B8A6' };
+    const getCategoryIcon = (c) => CATEGORY_ICONS[c] || CATEGORY_ICONS.default;
+    const getCategoryColor = (c) => catColors[c] || colors.primary;
 
     if (isLoading && !isInitialized) {
-        return (
-            <View style={[styles.container, styles.loadingContainer, { backgroundColor: colors.background }]}>
-                <ActivityIndicator size="large" color={colors.primary} />
-                <Text style={[styles.loadingText, { color: colors.gray }]}>Loading services...</Text>
-            </View>
-        );
+        return (<View style={[styles.container, styles.loadingContainer, { backgroundColor: colors.background }]}><ActivityIndicator size="large" color={colors.primary} /><Text style={[styles.loadingText, { color: colors.gray }]}>Loading services...</Text></View>);
     }
 
     const totalServices = Object.values(groupedServices).reduce((acc, g) => acc + g.length, 0);
@@ -154,100 +96,17 @@ const CoreServicesScreen = () => {
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
             <View style={[styles.header, { backgroundColor: colors.primary }]}>
-                <View style={styles.headerTop}>
-                    <View>
-                        <Text style={styles.headerTitle}>Core Services</Text>
-                        <Text style={styles.headerSubtitle}>{totalServices} features available</Text>
-                    </View>
-                    <TouchableOpacity style={styles.searchButton} onPress={toggleSearch}>
-                        <Ionicons name={showSearch ? 'close' : 'search'} size={24} color={colors.white} />
-                    </TouchableOpacity>
-                </View>
-
-                <Animated.View style={[
-                    styles.searchContainer,
-                    {
-                        maxHeight: searchAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 60] }),
-                        opacity: searchAnim,
-                    }
-                ]}>
-                    <View style={styles.searchInputWrapper}>
-                        <Ionicons name="search" size={20} color={colors.gray} />
-                        <View style={[styles.searchInput, { backgroundColor: colors.white + '20' }]}>
-                            <TextInput
-                                style={styles.searchInputField}
-                                placeholder="Search services..."
-                                placeholderTextColor={colors.white + '80'}
-                                value={searchQuery}
-                                onChangeText={setSearchQuery}
-                            />
-                        </View>
-                    </View>
-                </Animated.View>
+                <View style={styles.headerTop}><View><Text style={styles.headerTitle}>Core Services</Text><Text style={styles.headerSubtitle}>{totalServices} features available</Text></View><TouchableOpacity style={styles.searchButton} onPress={toggleSearch}><Ionicons name={showSearch ? 'close' : 'search'} size={22} color={colors.white} /></TouchableOpacity></View>
+                <Animated.View style={[styles.searchContainer, { maxHeight: searchAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 60] }), opacity: searchAnim }]}><View style={styles.searchInputWrapper}><Ionicons name="search" size={18} color={colors.gray} /><View style={[styles.searchInput, { backgroundColor: colors.white + '20' }]}><TextInput style={styles.searchInputField} placeholder="Search services..." placeholderTextColor={colors.white + '80'} value={searchQuery} onChangeText={setSearchQuery} /></View></View></Animated.View>
             </View>
-
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-                {Object.entries(groupedServices).map(([category, services]) => (
-                    <View key={category} style={styles.categorySection}>
-                        <View style={styles.categoryHeader}>
-                            <View style={[styles.categoryIcon, { backgroundColor: getCategoryColor(category) + '20' }]}>
-                                <Ionicons name={getCategoryIcon(category)} size={18} color={getCategoryColor(category)} />
-                            </View>
-                            <Text style={[styles.categoryTitle, { color: colors.text }]}>{category}</Text>
-                            <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(category) + '20' }]}>
-                                <Text style={[styles.categoryBadgeText, { color: getCategoryColor(category) }]}>
-                                    {services.length}
-                                </Text>
-                            </View>
-                        </View>
-
-                        <View style={styles.servicesGrid}>
-                            {services.map((service) => (
-                                <TouchableOpacity
-                                    key={service.id}
-                                    style={[styles.serviceCard, { backgroundColor: colors.card, ...shadows.md }]}
-                                    onPress={() => handleServicePress(service)}
-                                    activeOpacity={0.7}
-                                >
-                                    <View style={[styles.serviceIconWrapper, { backgroundColor: service.color + '15' }]}>
-                                        <Ionicons name={service.icon} size={28} color={service.color} />
-                                    </View>
-                                    <Text style={[styles.serviceTitle, { color: colors.text }]} numberOfLines={1}>
-                                        {service.title}
-                                    </Text>
-                                    <Text style={[styles.serviceDescription, { color: colors.gray }]} numberOfLines={2}>
-                                        {service.description}
-                                    </Text>
-                                    {(service.children?.length > 0) && (
-                                        <View style={styles.hasSubmenu}>
-                                            <Ionicons name="chevron-forward" size={14} color={colors.gray} />
-                                        </View>
-                                    )}
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    </View>
-                ))}
-
-                {totalServices === 0 && (
-                    <View style={styles.emptyState}>
-                        <Ionicons name="search" size={64} color={colors.gray + '50'} />
-                        <Text style={[styles.emptyTitle, { color: colors.text }]}>No services found</Text>
-                        <Text style={[styles.emptySubtitle, { color: colors.gray }]}>
-                            Try a different search term
-                        </Text>
-                    </View>
-                )}
-
-                <View style={styles.bottomPadding} />
-            </ScrollView>
+            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>{Object.entries(groupedServices).map(([category, services]) => (<View key={category} style={styles.categorySection}><View style={styles.categoryHeader}><View style={[styles.categoryIcon, { backgroundColor: getCategoryColor(category) + '20' }]}><Ionicons name={getCategoryIcon(category)} size={16} color={getCategoryColor(category)} /></View><Text style={[styles.categoryTitle, { color: colors.text }]}>{category}</Text><View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(category) + '20' }]}><Text style={[styles.categoryBadgeText, { color: getCategoryColor(category) }]}>{services.length}</Text></View></View><View style={styles.servicesGrid}>{services.map((service) => (<TouchableOpacity key={service.id} style={[styles.serviceCard, { backgroundColor: colors.card, ...shadows.md }]} onPress={() => handleServicePress(service)} activeOpacity={0.7}><View style={[styles.serviceIconWrapper, { backgroundColor: service.color + '15' }]}><Ionicons name={service.icon} size={22} color={service.color} /></View><View style={styles.serviceContent}><Text style={[styles.serviceTitle, { color: colors.text }]} numberOfLines={1}>{service.title}</Text><Text style={[styles.serviceDescription, { color: colors.gray }]} numberOfLines={1}>{service.description}</Text></View>{(service.children?.length > 0) && <View style={styles.hasSubmenu}><Ionicons name="chevron-forward" size={16} color={colors.gray} /></View>}</TouchableOpacity>))}</View></View>))}{totalServices === 0 && (<View style={styles.emptyState}><Ionicons name="search" size={48} color={colors.gray + '50'} /><Text style={[styles.emptyTitle, { color: colors.text }]}>No services found</Text><Text style={[styles.emptySubtitle, { color: colors.gray }]}>Try a different search term</Text></View>)}<View style={styles.bottomPadding} /></ScrollView>
         </View>
     );
 };
 
 function getDefaultServices(colors) {
     return [
-        { id: 'app-guide', title: 'App Guide', description: 'Complete guide & how to use', icon: 'book', color: '#3B82F6', screen: 'AppGuide', category: 'default' },
+        { id: 'app-guide', title: 'App Guide', description: 'Complete guide & how to use', icon: 'book', color: '#3B82F6', screen: 'AppGuide', category: 'Default' },
         { id: 'women-safety', title: 'Women Safety', description: 'SOS, emergency contacts & safety tips', icon: 'shield-checkmark', color: '#EC4899', screen: 'WomenSafety', category: 'Emergency' },
         { id: 'emergency-helpline', title: 'Emergency Helpline', description: 'Emergency contacts & hotlines', icon: 'call', color: '#DC2626', screen: 'EmergencyHelpline', category: 'Emergency' },
         { id: 'live-share', title: 'Live Safety Share', description: 'Share live camera & screen with contacts', icon: 'videocam', color: '#EF4444', screen: 'LiveShare', category: 'Emergency' },
@@ -280,10 +139,10 @@ function getDefaultServices(colors) {
         { id: 'volume-button', title: 'Volume Button', description: 'Volume button shortcuts', icon: 'volume-medium', color: '#F59E0B', screen: 'VolumeButton', category: 'Tools' },
         { id: 'logs', title: 'App Logs', description: 'View application logs', icon: 'list', color: '#6B7280', screen: 'Logs', category: 'Tools' },
         { id: 'community', title: 'Community', description: 'Community support', icon: 'people-circle', color: '#14B8A6', screen: 'Community', category: 'Community' },
-        { id: 'settings', title: 'Settings', description: 'API key, preferences & about', icon: 'settings', color: '#6B7280', screen: 'Settings', category: 'default' },
-        { id: 'privacy-policy', title: 'Privacy Policy', description: 'Read our privacy policy', icon: 'shield', color: '#6B7280', screen: 'PrivacyPolicy', category: 'default' },
-        { id: 'terms-of-service', title: 'Terms of Service', description: 'Read our terms', icon: 'document-text', color: '#6B7280', screen: 'TermsOfService', category: 'default' },
-        { id: 'profile', title: 'My Profile', description: 'View & edit your profile', icon: 'person', color: '#8B5CF6', screen: 'Profile', category: 'default' },
+        { id: 'settings', title: 'Settings', description: 'API key, preferences & about', icon: 'settings', color: '#6B7280', screen: 'Settings', category: 'Default' },
+        { id: 'privacy-policy', title: 'Privacy Policy', description: 'Read our privacy policy', icon: 'shield', color: '#6B7280', screen: 'PrivacyPolicy', category: 'Default' },
+        { id: 'terms-of-service', title: 'Terms of Service', description: 'Read our terms', icon: 'document-text', color: '#6B7280', screen: 'TermsOfService', category: 'Default' },
+        { id: 'profile', title: 'My Profile', description: 'View & edit your profile', icon: 'person', color: '#8B5CF6', screen: 'Profile', category: 'Default' },
     ];
 }
 
@@ -307,12 +166,13 @@ const styles = StyleSheet.create({
     categoryTitle: { fontSize: 18, fontWeight: '700' },
     categoryBadge: { marginLeft: 'auto', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
     categoryBadgeText: { fontSize: 12, fontWeight: '700' },
-    servicesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-    serviceCard: { width: CARD_WIDTH, borderRadius: 16, padding: 16 },
-    serviceIconWrapper: { width: 52, height: 52, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-    serviceTitle: { fontSize: 15, fontWeight: '600', marginBottom: 4 },
-    serviceDescription: { fontSize: 12, lineHeight: 16 },
-    hasSubmenu: { position: 'absolute', top: 12, right: 12 },
+    servicesGrid: { flexDirection: 'column', gap: 8 },
+    serviceCard: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, padding: 12 },
+    serviceIconWrapper: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+    serviceContent: { flex: 1, marginLeft: 12 },
+    serviceTitle: { fontSize: 15, fontWeight: '600', marginBottom: 2 },
+    serviceDescription: { fontSize: 12 },
+    hasSubmenu: { marginLeft: 8 },
     emptyState: { alignItems: 'center', paddingVertical: 60 },
     emptyTitle: { fontSize: 18, fontWeight: '600', marginTop: 16 },
     emptySubtitle: { fontSize: 14, marginTop: 4 },
