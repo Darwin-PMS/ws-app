@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useApp } from '../context/AppContext';
+import { TouchableOpacity, StyleSheet } from 'react-native';
 
 // Import screens
 import HomeScreen from '../screens/HomeScreen';
@@ -56,7 +57,7 @@ import CommunityScreen from '../screens/CommunityScreen';
 import AppGuideScreen from '../screens/AppGuideScreen';
 import AboutAppScreen from '../screens/AboutAppScreen';
 import HelpScreen from '../screens/HelpScreen';
-import { TouchableOpacity } from 'react-native';
+import ZoneHeadDashboardScreen from '../screens/ZoneHeadDashboardScreen';
 
 // Import Admin screens
 import {
@@ -67,10 +68,63 @@ import {
     FamilyDetailsScreen as AdminFamilyDetailsScreen,
     SOSAlertManagementScreen,
     AdminLiveTrackingScreen,
+    GrievanceManagementScreen,
+    NotificationManagementScreen,
+    ActivityLogsScreen,
+    SystemHealthScreen,
+    WorkshopAnalyticsScreen,
+    ZoneManagementScreen,
+    ZoneDetailsScreen,
+    ZoneAnalyticsScreen,
 } from '../admin/screens';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
+
+// Back button styles - defined at top for immediate use
+const backButtonStyles = StyleSheet.create({
+    button: {
+        padding: 8,
+        marginLeft: 4,
+    },
+});
+
+// Create a reusable back button component
+const BackButton = ({ onPress, color }) => (
+    <TouchableOpacity
+        onPress={onPress}
+        style={backButtonStyles.button}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        activeOpacity={0.7}
+    >
+        {/* <Ionicons name="chevron-back" size={28} color={color || '#6366f1'} /> */}
+    </TouchableOpacity>
+);
+
+// Create screen options with back button
+const createScreenOptions = (colors, headerTitle = null) => ({
+    headerStyle: {
+        backgroundColor: colors.background,
+    },
+    headerTintColor: colors.primary,
+    headerTitleStyle: {
+        fontWeight: '600',
+        color: colors.text,
+    },
+    headerShadowVisible: false,
+    headerBackVisible: true,
+    headerBackTitleVisible: false,
+    contentStyle: {
+        backgroundColor: colors.background,
+    },
+    headerLeft: (props) => {
+        if (props.canGoBack) {
+            return <BackButton onPress={props.onPress} color={colors.primary} />;
+        }
+        return null;
+    },
+    ...(headerTitle && { headerTitle }),
+});
 
 // Admin Stack Navigator
 const AdminStack = () => {
@@ -78,22 +132,7 @@ const AdminStack = () => {
 
     return (
         <Stack.Navigator
-            screenOptions={{
-                headerStyle: {
-                    backgroundColor: colors.background,
-                },
-                headerTintColor: colors.text,
-                headerTitleStyle: {
-                    fontWeight: '600',
-                },
-                headerShadowVisible: false,
-                contentStyle: {
-                    backgroundColor: colors.background,
-                },
-                headerBackVisible: true,
-                headerBackTitle: 'Back',
-                headerBackTitleVisible: true,
-            }}
+            screenOptions={createScreenOptions(colors)}
         >
             <Stack.Screen
                 name="AdminDashboard"
@@ -130,32 +169,57 @@ const AdminStack = () => {
                 component={AdminLiveTrackingScreen}
                 options={{ title: 'Live Tracking' }}
             />
+            <Stack.Screen
+                name="GrievanceManagement"
+                component={GrievanceManagementScreen}
+                options={{ title: 'Grievance Reports' }}
+            />
+            <Stack.Screen
+                name="NotificationManagement"
+                component={NotificationManagementScreen}
+                options={{ title: 'Notifications' }}
+            />
+            <Stack.Screen
+                name="ActivityLogs"
+                component={ActivityLogsScreen}
+                options={{ title: 'Activity Logs' }}
+            />
+            <Stack.Screen
+                name="SystemHealth"
+                component={SystemHealthScreen}
+                options={{ title: 'System Health' }}
+            />
+            <Stack.Screen
+                name="WorkshopAnalytics"
+                component={WorkshopAnalyticsScreen}
+                options={{ title: 'Workshop Analytics' }}
+            />
+            <Stack.Screen
+                name="ZoneManagement"
+                component={ZoneManagementScreen}
+                options={{ title: 'Zone Management' }}
+            />
+            <Stack.Screen
+                name="ZoneDetails"
+                component={ZoneDetailsScreen}
+                options={{ title: 'Zone Details' }}
+            />
+            <Stack.Screen
+                name="ZoneAnalytics"
+                component={ZoneAnalyticsScreen}
+                options={{ title: 'Zone Analytics' }}
+            />
         </Stack.Navigator>
     );
 };
 
-// Core Services stack (More menu) - uses useTheme for reactive colors
-const CoreServicesStack = ({ navigation }) => {
+// Core Services stack (More menu)
+const CoreServicesStack = () => {
     const { colors } = useTheme();
 
     return (
         <Stack.Navigator
-            screenOptions={{
-                headerStyle: {
-                    backgroundColor: colors.background,
-                },
-                headerTintColor: colors.text,
-                headerTitleStyle: {
-                    fontWeight: '600',
-                },
-                headerShadowVisible: false,
-                contentStyle: {
-                    backgroundColor: colors.background,
-                },
-                headerBackVisible: true,
-                headerBackTitle: 'Back',
-                headerBackTitleVisible: true,
-            }}
+            screenOptions={createScreenOptions(colors)}
         >
             <Stack.Screen
                 name="CoreServicesHome"
@@ -402,11 +466,16 @@ const CoreServicesStack = ({ navigation }) => {
                 component={HelpScreen}
                 options={{ title: 'Help & Support' }}
             />
+            <Stack.Screen
+                name="ZoneDashboard"
+                component={ZoneHeadDashboardScreen}
+                options={{ title: 'Zone Dashboard' }}
+            />
         </Stack.Navigator>
     );
 };
 
-// Main tab navigator - uses useTheme for reactive colors
+// Main tab navigator
 const AppNavigator = () => {
     const { colors } = useTheme();
     const { userRole } = useApp();
@@ -414,126 +483,118 @@ const AppNavigator = () => {
 
     return (
         <Stack.Navigator
-            screenOptions={{
-                headerStyle: { backgroundColor: colors.background },
-                headerTintColor: colors.text,
-                headerTitleStyle: { fontWeight: '600' },
-                headerShadowVisible: false,
-                headerBackVisible: true,
-                headerBackTitle: 'Back',
-                headerBackTitleVisible: true,
-            }}
+            screenOptions={createScreenOptions(colors)}
         >
             <Stack.Screen name="MainTabs" options={{ headerShown: false }}>
-            {() => (
-        <Tab.Navigator
-            screenOptions={({ route }) => ({
-                tabBarIcon: ({ focused, color, size }) => {
-                    let iconName;
+                {() => (
+                    <Tab.Navigator
+                        screenOptions={({ route }) => ({
+                            tabBarIcon: ({ focused, color, size }) => {
+                                let iconName;
 
-                    switch (route.name) {
-                        case 'Home':
-                            iconName = focused ? 'home' : 'home-outline';
-                            break;
-                        case 'Notifications':
-                            iconName = focused ? 'notifications' : 'notifications-outline';
-                            break;
-                        case 'AIChat':
-                            iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
-                            break;
-                        case 'Admin':
-                            iconName = focused ? 'shield-checkmark' : 'shield-checkmark-outline';
-                            break;
-                        case 'More':
-                            iconName = focused ? 'menu' : 'menu-outline';
-                            break;
-                        case 'Profile':
-                            iconName = focused ? 'person' : 'person-outline';
-                            break;
-                        default:
-                            iconName = 'ellipse';
-                    }
+                                switch (route.name) {
+                                    case 'Home':
+                                        iconName = focused ? 'home' : 'home-outline';
+                                        break;
+                                    case 'Notifications':
+                                        iconName = focused ? 'notifications' : 'notifications-outline';
+                                        break;
+                                    case 'AIChat':
+                                        iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
+                                        break;
+                                    case 'Admin':
+                                        iconName = focused ? 'shield-checkmark' : 'shield-checkmark-outline';
+                                        break;
+                                    case 'More':
+                                        iconName = focused ? 'menu' : 'menu-outline';
+                                        break;
+                                    case 'Profile':
+                                        iconName = focused ? 'person' : 'person-outline';
+                                        break;
+                                    default:
+                                        iconName = 'ellipse';
+                                }
 
-                    return <Ionicons name={iconName} size={size} color={color} />;
-                },
-                tabBarActiveTintColor: colors.tabBarActive,
-                tabBarInactiveTintColor: colors.tabBarInactive,
-                tabBarStyle: {
-                    backgroundColor: colors.tabBarBackground,
-                    borderTopColor: colors.border,
-                    borderTopWidth: 1,
-                    height: 85,
-                    paddingTop: 8,
-                    paddingBottom: 25,
-                },
-                tabBarLabelStyle: {
-                    fontSize: 11,
-                    fontWeight: '500',
-                },
-                headerStyle: {
-                    backgroundColor: colors.background,
-                },
-                headerTintColor: colors.text,
-                headerTitleStyle: {
-                    fontWeight: '600',
-                    fontSize: 18,
-                },
-                headerShadowVisible: false,
-            })}
-        >
-            <Tab.Screen
-                name="Home"
-                component={HomeScreen}
-                options={{
-                    title: 'Home',
-                    headerTitle: 'Welcome Home',
-                }}
-            />
-            {isAdmin && (
-                <Tab.Screen
-                    name="Admin"
-                    component={AdminStack}
-                    options={{
-                        title: 'Admin',
-                        headerShown: false,
-                    }}
-                />
-            )}
-            <Tab.Screen
-                name="Notifications"
-                component={NotificationScreen}
-                options={{
-                    title: 'Alerts',
-                    headerTitle: 'Notifications',
-                }}
-            />
-            <Tab.Screen
-                name="AIChat"
-                component={ChatScreen}
-                options={{
-                    title: 'AI Chat',
-                    headerTitle: 'AI Chat',
-                }}
-            />
-            <Tab.Screen
-                name="More"
-                component={CoreServicesStack}
-                options={{
-                    title: 'More',
-                    headerShown: false,
-                }}
-            />
-            <Tab.Screen
-                name="Profile"
-                component={ProfileScreen}
-                options={{
-                    title: 'Profile',
-                    headerTitle: 'My Profile',
-                }}
-            />
-        </Tab.Navigator>
-            )}
-        </Stack.Screen>
+                                return <Ionicons name={iconName} size={size} color={color} />;
+                            },
+                            tabBarActiveTintColor: colors.tabBarActive,
+                            tabBarInactiveTintColor: colors.tabBarInactive,
+                            tabBarStyle: {
+                                backgroundColor: colors.tabBarBackground,
+                                borderTopColor: colors.border,
+                                borderTopWidth: 1,
+                                height: 85,
+                                paddingTop: 8,
+                                paddingBottom: 25,
+                            },
+                            tabBarLabelStyle: {
+                                fontSize: 11,
+                                fontWeight: '500',
+                            },
+                            headerStyle: {
+                                backgroundColor: colors.background,
+                            },
+                            headerTintColor: colors.text,
+                            headerTitleStyle: {
+                                fontWeight: '600',
+                                fontSize: 18,
+                            },
+                            headerShadowVisible: false,
+                        })}
+                    >
+                        <Tab.Screen
+                            name="Home"
+                            component={HomeScreen}
+                            options={{
+                                title: 'Home',
+                                headerTitle: 'Welcome Home',
+                            }}
+                        />
+                        {isAdmin && (
+                            <Tab.Screen
+                                name="Admin"
+                                component={AdminStack}
+                                options={{
+                                    title: 'Admin',
+                                    headerShown: false,
+                                }}
+                            />
+                        )}
+                        <Tab.Screen
+                            name="Notifications"
+                            component={NotificationScreen}
+                            options={{
+                                title: 'Alerts',
+                                headerTitle: 'Notifications',
+                            }}
+                        />
+                        <Tab.Screen
+                            name="AIChat"
+                            component={ChatScreen}
+                            options={{
+                                title: 'AI Chat',
+                                headerTitle: 'AI Chat',
+                            }}
+                        />
+                        <Tab.Screen
+                            name="More"
+                            component={CoreServicesStack}
+                            options={{
+                                title: 'More',
+                                headerShown: false,
+                            }}
+                        />
+                        <Tab.Screen
+                            name="Profile"
+                            component={ProfileScreen}
+                            options={{
+                                title: 'Profile',
+                                headerTitle: 'My Profile',
+                            }}
+                        />
+                    </Tab.Navigator>
+                )}
+            </Stack.Screen>
         </Stack.Navigator>
     );
 };

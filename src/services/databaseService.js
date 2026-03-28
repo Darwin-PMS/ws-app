@@ -586,6 +586,171 @@ class DatabaseService {
     async getUserFamilyMembers(userId) {
         return this.fetchAdminAPI(`/users/${userId}/families`);
     }
+
+    // ==================== WORKSHOP FEATURES ====================
+
+    // Get workshop analytics (Admin only)
+    async getWorkshopAnalytics(params = {}) {
+        const queryParams = new URLSearchParams(params).toString();
+        return this.fetchAdminAPI(`/workshop/analytics?${queryParams}`);
+    }
+
+    // Get all users workshop progress (Admin only)
+    async getWorkshopProgress(params = {}) {
+        const queryParams = new URLSearchParams(params).toString();
+        return this.fetchAdminAPI(`/workshop/progress?${queryParams}`);
+    }
+
+    // Get specific user workshop progress (Admin only)
+    async getUserWorkshopProgress(userId, params = {}) {
+        const queryParams = new URLSearchParams(params).toString();
+        return this.fetchAdminAPI(`/workshop/users/${userId}/progress?${queryParams}`);
+    }
+
+    // Save user workshop progress
+    async saveWorkshopProgress(progressData) {
+        return this.fetchAPI('/workshop/progress', {
+            method: 'POST',
+            body: JSON.stringify(progressData),
+        });
+    }
+
+    // Get workshop leaderboard (Admin only)
+    async getWorkshopLeaderboard(params = {}) {
+        const queryParams = new URLSearchParams(params).toString();
+        return this.fetchAdminAPI(`/workshop/leaderboard?${queryParams}`);
+    }
+
+    // Get user achievements
+    async getUserAchievements(userId) {
+        return this.fetchAPI(`/workshop/users/${userId}/achievements`);
+    }
+
+    // Get workshop categories (Admin only)
+    async getWorkshopCategories() {
+        return this.fetchAdminAPI('/workshop/categories');
+    }
+
+    // Get workshop content (Admin only)
+    async getWorkshopContent(params = {}) {
+        const queryParams = new URLSearchParams(params).toString();
+        return this.fetchAdminAPI(`/workshop/content?${queryParams}`);
+    }
+
+    // Add workshop content (Admin only)
+    async addWorkshopContent(contentData) {
+        return this.fetchAdminAPI('/workshop/content', {
+            method: 'POST',
+            body: JSON.stringify(contentData),
+        });
+    }
+
+    // Update workshop content (Admin only)
+    async updateWorkshopContent(contentId, contentData) {
+        return this.fetchAdminAPI(`/workshop/content/${contentId}`, {
+            method: 'PUT',
+            body: JSON.stringify(contentData),
+        });
+    }
+
+    // Delete workshop content (Admin only)
+    async deleteWorkshopContent(contentId) {
+        return this.fetchAdminAPI(`/workshop/content/${contentId}`, {
+            method: 'DELETE',
+        });
+    }
+
+    // ==================== ZONE MANAGEMENT ====================
+
+    // Get all zones (Admin only)
+    async getAllZones(params = {}) {
+        const queryParams = new URLSearchParams(params).toString();
+        return this.fetchAdminAPI(`/zones?${queryParams}`);
+    }
+
+    // Get zone by ID (Admin only)
+    async getZoneById(zoneId) {
+        return this.fetchAdminAPI(`/zones/${zoneId}`);
+    }
+
+    // Create zone (Admin only)
+    async createZone(zoneData) {
+        return this.fetchAdminAPI('/zones', {
+            method: 'POST',
+            body: JSON.stringify(zoneData),
+        });
+    }
+
+    // Update zone (Admin only)
+    async updateZone(zoneId, zoneData) {
+        return this.fetchAdminAPI(`/zones/${zoneId}`, {
+            method: 'PUT',
+            body: JSON.stringify(zoneData),
+        });
+    }
+
+    // Delete zone (Admin only)
+    async deleteZone(zoneId) {
+        return this.fetchAdminAPI(`/zones/${zoneId}`, {
+            method: 'DELETE',
+        });
+    }
+
+    // Assign user to zone (Admin only)
+    async assignUserToZone(zoneId, userId, roleInArea = 'member', isPrimary = false) {
+        return this.fetchAdminAPI(`/zones/${zoneId}/assign`, {
+            method: 'POST',
+            body: JSON.stringify({ userId, roleInArea, isPrimary }),
+        });
+    }
+
+    // Bulk assign users to zone (Admin only)
+    async bulkAssignUsersToZone(zoneId, userIds, roleInArea = 'member', isPrimary = false) {
+        return this.fetchAdminAPI(`/zones/${zoneId}/assign-bulk`, {
+            method: 'POST',
+            body: JSON.stringify({ userIds, roleInArea, isPrimary }),
+        });
+    }
+
+    // Remove user from zone (Admin only)
+    async removeUserFromZone(zoneId, userId) {
+        return this.fetchAdminAPI(`/zones/${zoneId}/users/${userId}`, {
+            method: 'DELETE',
+        });
+    }
+
+    // Get users in zone (Admin only)
+    async getZoneUsers(zoneId, params = {}) {
+        const queryParams = new URLSearchParams(params).toString();
+        return this.fetchAdminAPI(`/zones/${zoneId}/users?${queryParams}`);
+    }
+
+    // Get SOS alerts in zone (Admin only)
+    async getZoneSOSAlerts(zoneId, params = {}) {
+        const queryParams = new URLSearchParams(params).toString();
+        return this.fetchAdminAPI(`/zones/${zoneId}/sos-alerts?${queryParams}`);
+    }
+
+    // Get zone analytics (Admin only)
+    async getZoneAnalytics(zoneId) {
+        return this.fetchAdminAPI(`/zones/${zoneId}/analytics`);
+    }
+
+    // Get user's assigned zones
+    async getMyZones() {
+        return this.fetchAPI('/zones/my-zones');
+    }
+
+    // Get current user's zone-specific SOS alerts (for zone head)
+    async getMyZoneSOSAlerts(params = {}) {
+        const queryParams = new URLSearchParams(params).toString();
+        return this.fetchAPI(`/zones/my-zone/sos-alerts?${queryParams}`);
+    }
+
+    // Get user's primary zone
+    async getMyPrimaryZone() {
+        return this.fetchAPI('/zones/my-zone');
+    }
 }
 
 export default new DatabaseService();

@@ -15,6 +15,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import databaseService from '../services/databaseService';
 
+const GENDER_OPTIONS = [
+    { label: 'Select Gender', value: '' },
+    { label: 'Female', value: 'female' },
+    { label: 'Male', value: 'male' },
+    { label: 'Transgender', value: 'transgender' },
+    { label: 'Other', value: 'other' },
+    { label: 'Prefer not to say', value: 'prefer_not_to_say' },
+];
+
 const RegisterScreen = ({ navigation }) => {
     const { colors, spacing, borderRadius } = useTheme();
 
@@ -25,10 +34,12 @@ const RegisterScreen = ({ navigation }) => {
         phone: '',
         password: '',
         confirmPassword: '',
+        gender: '',
     });
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [showGenderPicker, setShowGenderPicker] = useState(false);
 
     const updateField = (field, value) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -37,6 +48,7 @@ const RegisterScreen = ({ navigation }) => {
     const validateForm = () => {
         if (!formData.firstName.trim()) return 'Please enter your first name';
         if (!formData.lastName.trim()) return 'Please enter your last name';
+        if (!formData.gender) return 'Please select your gender';
         if (!formData.email.trim()) return 'Please enter your email';
         if (!formData.phone.trim()) return 'Please enter your phone number';
         if (!formData.password) return 'Please enter a password';
@@ -60,6 +72,7 @@ const RegisterScreen = ({ navigation }) => {
                 email: formData.email.trim().toLowerCase(),
                 phone: formData.phone.trim(),
                 password: formData.password,
+                gender: formData.gender,
             });
 
             if (response.success) {
@@ -122,6 +135,44 @@ const RegisterScreen = ({ navigation }) => {
 
                 {renderInput('person-outline', 'First Name', 'firstName', { autoCapitalize: 'words' })}
                 {renderInput('person-outline', 'Last Name', 'lastName', { autoCapitalize: 'words' })}
+                
+                {/* Gender Picker */}
+                <TouchableOpacity 
+                    style={[styles.inputContainer, { backgroundColor: colors.card, borderColor: colors.border }]}
+                    onPress={() => setShowGenderPicker(!showGenderPicker)}
+                >
+                    <Ionicons name="male-female-outline" size={20} color={colors.gray} style={styles.inputIcon} />
+                    <Text style={[styles.input, { color: formData.gender ? colors.text : colors.gray }]}>
+                        {formData.gender ? GENDER_OPTIONS.find(g => g.value === formData.gender)?.label : 'Select Gender'}
+                    </Text>
+                    <Ionicons name={showGenderPicker ? 'chevron-up' : 'chevron-down'} size={20} color={colors.gray} />
+                </TouchableOpacity>
+
+                {showGenderPicker && (
+                    <View style={[styles.pickerContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                        {GENDER_OPTIONS.map((option) => (
+                            <TouchableOpacity
+                                key={option.value}
+                                style={[
+                                    styles.pickerOption,
+                                    formData.gender === option.value && { backgroundColor: colors.primary + '20' }
+                                ]}
+                                onPress={() => {
+                                    updateField('gender', option.value);
+                                    setShowGenderPicker(false);
+                                }}
+                            >
+                                <Text style={[styles.pickerOptionText, { color: colors.text }]}>
+                                    {option.label}
+                                </Text>
+                                {formData.gender === option.value && (
+                                    <Ionicons name="checkmark" size={20} color={colors.primary} />
+                                )}
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                )}
+
                 {renderInput('mail-outline', 'Email', 'email', { keyboardType: 'email-address', autoCapitalize: 'none' })}
                 {renderInput('call-outline', 'Phone Number', 'phone', { keyboardType: 'phone-pad' })}
                 {renderPasswordInput('Password', 'password', showPassword, setShowPassword)}
@@ -197,6 +248,24 @@ const styles = StyleSheet.create({
     loginText: {
         textAlign: 'center',
         marginTop: 20,
+        fontSize: 16,
+    },
+    pickerContainer: {
+        borderWidth: 1,
+        borderRadius: 12,
+        marginBottom: 16,
+        overflow: 'hidden',
+    },
+    pickerOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(128, 128, 128, 0.1)',
+    },
+    pickerOptionText: {
         fontSize: 16,
     },
 });

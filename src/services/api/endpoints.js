@@ -228,6 +228,19 @@ export const ENDPOINTS = {
   banners: {
     list: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/banners`,
   },
+  workshop: {
+    progress: (userId) => `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/workshop/users/${userId}/progress`,
+    saveProgress: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/workshop/progress`,
+    leaderboard: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/workshop/leaderboard`,
+    achievements: (userId) => `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/workshop/users/${userId}/achievements`,
+    categories: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/workshop/categories`,
+    tips: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/workshop/tips`,
+  },
+  zones: {
+    myZones: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/zones/my-zones`,
+    myZone: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/zones/my-zone`,
+    myZoneSOSAlerts: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/zones/my-zone/sos-alerts`,
+  },
   admin: {
     dashboard: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/admin/dashboard`,
     users: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/admin/users`,
@@ -256,6 +269,18 @@ export const ENDPOINTS = {
     notifications: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/admin/notifications`,
     userDependents: (userId) => `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/admin/users/${userId}/dependents`,
     userFamilyMembers: (userId) => `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/admin/users/${userId}/family-members`,
+    workshopAnalytics: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/admin/workshop/analytics`,
+    workshopProgress: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/admin/workshop/progress`,
+    workshopLeaderboard: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/admin/workshop/leaderboard`,
+    workshopCategories: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/admin/workshop/categories`,
+    workshopContent: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/admin/workshop/content`,
+    workshopContentDetail: (id) => `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/admin/workshop/content/${id}`,
+    zones: `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/admin/zones`,
+    zoneDetail: (id) => `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/admin/zones/${id}`,
+    zoneUsers: (id) => `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/admin/zones/${id}/users`,
+    zoneSOSAlerts: (id) => `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/admin/zones/${id}/sos-alerts`,
+    zoneAnalytics: (id) => `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/admin/zones/${id}/analytics`,
+    zoneAssignBulk: (zoneId) => `${API_CONFIG.BASE_URL}/${API_CONFIG.VERSION}/mobile/admin/zones/${zoneId}/assign-bulk`,
   },
 };
 

@@ -222,6 +222,20 @@ const AdminDashboardScreen = ({ navigation }) => {
                         color="#14B8A6"
                         screen="SystemHealth"
                     />
+                    <MenuCard
+                        title="Workshop Analytics"
+                        subtitle="Training progress & leaderboard"
+                        icon="school-outline"
+                        color="#6366F1"
+                        screen="WorkshopAnalytics"
+                    />
+                    <MenuCard
+                        title="Zone Management"
+                        subtitle="Manage geographic zones"
+                        icon="map-outline"
+                        color="#0EA5E9"
+                        screen="ZoneManagement"
+                    />
                 </View>
             </View>
         </ScrollView>

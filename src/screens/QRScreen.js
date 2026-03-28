@@ -21,7 +21,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useApp } from '../context/AppContext';
 import { apiClient } from '../services/api/client';
 import { ENDPOINTS, API_CONFIG, QR_CONFIG } from '../services/api/endpoints';
-import Camera from 'expo-camera';
+import { CameraView, Camera, requestCameraPermissionsAsync } from 'expo-camera';
 import * as FileSystem from 'expo-file-system';
 
 const PERMISSION_TYPES = {
@@ -210,7 +210,7 @@ const QRScreen = ({ navigation }) => {
 
     const openCameraScanner = async () => {
         try {
-            const { status } = await Camera.requestCameraPermissionsAsync();
+            const { status } = await requestCameraPermissionsAsync();
             if (status === 'granted') {
                 setScanning(true);
                 setShowScanModal(true);
@@ -815,9 +815,12 @@ const QRScreen = ({ navigation }) => {
                     </View>
                     
                     <View style={styles.cameraWrapper}>
-                        <Camera
-                            onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
+                        <CameraView
+                            onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
                             style={styles.camera}
+                            barcodeScannerSettings={{
+                                barcodeTypes: ["qr"],
+                            }}
                         />
                         <View style={styles.cameraOverlay}>
                             <View style={styles.scanFrame}>

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
     View,
     Text,
@@ -6,12 +6,15 @@ import {
     TouchableOpacity,
     ScrollView,
     Dimensions,
+    PanResponder,
+    Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import appFeaturesData from '../data/appFeatures.json';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const SWIPE_THRESHOLD = 50;
 
 const AppGuideScreen = ({ navigation }) => {
     const { colors, spacing, borderRadius } = useTheme();
@@ -19,21 +22,74 @@ const AppGuideScreen = ({ navigation }) => {
     const [currentPage, setCurrentPage] = useState(0);
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [selectedFeature, setSelectedFeature] = useState(null);
+    const [isSwipeEnabled, setIsSwipeEnabled] = useState(true);
 
     const categories = appFeaturesData.categories;
     const totalPages = categories.length + 1;
 
+    const translateX = useRef(new Animated.Value(0)).current;
+
     const goToNextPage = useCallback(() => {
         if (currentPage < totalPages - 1) {
+            Animated.sequence([
+                Animated.timing(translateX, {
+                    toValue: -SCREEN_WIDTH,
+                    duration: 200,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(translateX, {
+                    toValue: 0,
+                    duration: 0,
+                    useNativeDriver: true,
+                }),
+            ]).start();
             setCurrentPage(prev => prev + 1);
         }
-    }, [currentPage, totalPages]);
+    }, [currentPage, totalPages, translateX]);
 
     const goToPrevPage = useCallback(() => {
         if (currentPage > 0) {
+            Animated.sequence([
+                Animated.timing(translateX, {
+                    toValue: SCREEN_WIDTH,
+                    duration: 200,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(translateX, {
+                    toValue: 0,
+                    duration: 0,
+                    useNativeDriver: true,
+                }),
+            ]).start();
             setCurrentPage(prev => prev - 1);
         }
-    }, [currentPage]);
+    }, [currentPage, translateX]);
+
+    const panResponder = useRef(
+        PanResponder.create({
+            onStartShouldSetPanResponder: () => false,
+            onMoveShouldSetPanResponder: (_, gestureState) => {
+                return isSwipeEnabled && Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dy) < 30;
+            },
+            onPanResponderMove: (_, gestureState) => {
+                if (!isSwipeEnabled) return;
+                translateX.setValue(gestureState.dx * 0.3);
+            },
+            onPanResponderRelease: (_, gestureState) => {
+                if (!isSwipeEnabled) return;
+                if (gestureState.dx < -SWIPE_THRESHOLD) {
+                    goToNextPage();
+                } else if (gestureState.dx > SWIPE_THRESHOLD) {
+                    goToPrevPage();
+                } else {
+                    Animated.spring(translateX, {
+                        toValue: 0,
+                        useNativeDriver: true,
+                    }).start();
+                }
+            },
+        })
+    ).current;
 
     const renderCover = () => (
         <View style={[styles.coverPage, { backgroundColor: colors.primary }]}>
@@ -250,9 +306,12 @@ const AppGuideScreen = ({ navigation }) => {
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
-            <View style={styles.bookContainer}>
+            <Animated.View 
+                style={[styles.bookContainer, { transform: [{ translateX }] }]}
+                {...panResponder.panHandlers}
+            >
                 {currentPage === 0 ? renderCover() : renderCategoryPage(categories[currentPage - 1], currentPage - 1)}
-            </View>
+            </Animated.View>
 
             {currentPage > 0 && (
                 <TouchableOpacity
@@ -274,17 +333,42 @@ const AppGuideScreen = ({ navigation }) => {
 
             <View style={styles.pagination}>
                 {Array.from({ length: totalPages }).map((_, index) => (
-                    <View
+                    <TouchableOpacity
                         key={index}
-                        style={[
-                            styles.paginationDot,
-                            {
-                                backgroundColor: index === currentPage ? colors.primary : colors.border,
-                                width: index === currentPage ? 24 : 8,
-                            }
-                        ]}
-                    />
+                        onPress={() => {
+                            Animated.sequence([
+                                Animated.timing(translateX, {
+                                    toValue: index > currentPage ? -SCREEN_WIDTH : SCREEN_WIDTH,
+                                    duration: 200,
+                                    useNativeDriver: true,
+                                }),
+                                Animated.timing(translateX, {
+                                    toValue: 0,
+                                    duration: 0,
+                                    useNativeDriver: true,
+                                }),
+                            ]).start();
+                            setCurrentPage(index);
+                        }}
+                    >
+                        <View
+                            style={[
+                                styles.paginationDot,
+                                {
+                                    backgroundColor: index === currentPage ? colors.primary : colors.border,
+                                    width: index === currentPage ? 24 : 8,
+                                }
+                            ]}
+                        />
+                    </TouchableOpacity>
                 ))}
+            </View>
+
+            <View style={styles.swipeHint}>
+                <Ionicons name="finger-print" size={16} color={colors.textMuted} />
+                <Text style={[styles.swipeHintText, { color: colors.textMuted }]}>
+                    Swipe left or right to change pages
+                </Text>
             </View>
 
             <TouchableOpacity
@@ -493,12 +577,22 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        paddingVertical: 16,
+        paddingVertical: 12,
         gap: 6,
     },
     paginationDot: {
         height: 8,
         borderRadius: 4,
+    },
+    swipeHint: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingBottom: 20,
+        gap: 6,
+    },
+    swipeHintText: {
+        fontSize: 12,
     },
     tocButton: {
         position: 'absolute',

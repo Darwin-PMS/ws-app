@@ -112,6 +112,94 @@ class AdminService {
     async getUserFamilyMembers(userId) {
         return databaseService.getUserFamilies(userId);
     }
+
+    // ==================== WORKSHOP FEATURES ====================
+
+    async getWorkshopAnalytics(params = {}) {
+        return databaseService.getWorkshopAnalytics(params);
+    }
+
+    async getAllWorkshopProgress(params = {}) {
+        return databaseService.getWorkshopProgress(params);
+    }
+
+    async getUserWorkshopProgress(userId, params = {}) {
+        return databaseService.getUserWorkshopProgress(userId, params);
+    }
+
+    async saveWorkshopProgress(progressData) {
+        return databaseService.saveWorkshopProgress(progressData);
+    }
+
+    async getWorkshopLeaderboard(params = {}) {
+        return databaseService.getWorkshopLeaderboard(params);
+    }
+
+    async getUserAchievements(userId) {
+        return databaseService.getUserAchievements(userId);
+    }
+
+    async getWorkshopCategories() {
+        return databaseService.getWorkshopCategories();
+    }
+
+    async getWorkshopContent(params = {}) {
+        return databaseService.getWorkshopContent(params);
+    }
+
+    async addWorkshopContent(contentData) {
+        return databaseService.addWorkshopContent(contentData);
+    }
+
+    async updateWorkshopContent(contentId, contentData) {
+        return databaseService.updateWorkshopContent(contentId, contentData);
+    }
+
+    async deleteWorkshopContent(contentId) {
+        return databaseService.deleteWorkshopContent(contentId);
+    }
+
+    // ==================== ZONE MANAGEMENT ====================
+
+    async getAllZones(params = {}) {
+        return databaseService.getAllZones(params);
+    }
+
+    async getZoneById(zoneId) {
+        return databaseService.getZoneById(zoneId);
+    }
+
+    async createZone(zoneData) {
+        return databaseService.createZone(zoneData);
+    }
+
+    async updateZone(zoneId, zoneData) {
+        return databaseService.updateZone(zoneId, zoneData);
+    }
+
+    async deleteZone(zoneId) {
+        return databaseService.deleteZone(zoneId);
+    }
+
+    async assignUserToZone(zoneId, userId, roleInArea = 'member', isPrimary = false) {
+        return databaseService.assignUserToZone(zoneId, userId, roleInArea, isPrimary);
+    }
+
+    async removeUserFromZone(zoneId, userId) {
+        return databaseService.removeUserFromZone(zoneId, userId);
+    }
+
+    async getZoneUsers(zoneId, params = {}) {
+        return databaseService.getZoneUsers(zoneId, params);
+    }
+
+    async getZoneSOSAlerts(zoneId, params = {}) {
+        return databaseService.getZoneSOSAlerts(zoneId, params);
+    }
+
+    async getZoneAnalytics(zoneId) {
+        return databaseService.getZoneAnalytics(zoneId);
+    }
 }
 
 export default new AdminService();

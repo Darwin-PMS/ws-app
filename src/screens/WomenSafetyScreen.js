@@ -590,7 +590,16 @@ const WomenSafetyScreen = ({ navigation }) => {
         <View style={[styles.container, { backgroundColor: colors.background }]}>
             <ScrollView showsVerticalScrollIndicator={false}>
                 <View style={[styles.header, { backgroundColor: colors.error }]}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                    <TouchableOpacity 
+                        onPress={() => {
+                            if (navigation.canGoBack()) {
+                                navigation.goBack();
+                            } else {
+                                navigation.navigate('CoreServicesHome');
+                            }
+                        }} 
+                        style={styles.backBtn}
+                    >
                         <Ionicons name="arrow-back" size={24} color={colors.white} />
                     </TouchableOpacity>
                     <Ionicons name="shield-checkmark" size={40} color={colors.white} />

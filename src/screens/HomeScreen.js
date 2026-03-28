@@ -213,6 +213,27 @@ const ROLE_BASED_CONFIG = {
             specialSection: { title: 'Admin Panel', screen: 'AdminDashboard', icon: 'shield-checkmark', isAdmin: true },
         },
     },
+    zone_head: {
+        title: 'Zone Dashboard',
+        subtitle: 'Managing your zone',
+        sections: {
+            quickActions: [
+                { id: 'zone-alerts', title: 'Zone Alerts', icon: 'warning', color: '#EF4444', screen: 'ZoneDashboard' },
+                { id: 'my-zone', title: 'My Zone', icon: 'map', color: '#8B5CF6', screen: 'ZoneDashboard' },
+                { id: 'sos', title: 'SOS', icon: 'warning', color: '#EF4444', screen: 'WomenSafety', urgent: true },
+            ],
+            features: [
+                { id: 'zone-users', title: 'Zone Users', subtitle: 'View assigned users', icon: 'people', color: '#3B82F6', screen: 'ZoneDashboard' },
+                { id: 'zone-sos', title: 'SOS Cases', subtitle: 'View zone alerts', icon: 'alert-circle', color: '#EF4444', screen: 'ZoneDashboard' },
+                { id: 'zone-grievances', title: 'Grievances', subtitle: 'Zone complaints', icon: 'document-text', color: '#F59E0B', screen: 'ZoneDashboard' },
+                { id: 'zone-analytics', title: 'Analytics', subtitle: 'Zone stats', icon: 'stats-chart', color: '#10B981', screen: 'ZoneDashboard' },
+                { id: 'women-safety', title: 'Women Safety', subtitle: 'Safety tools', icon: 'shield-checkmark', color: '#EC4899', screen: 'WomenSafety' },
+                { id: 'ai-chat', title: 'AI Chat', subtitle: 'Assistant', icon: 'chatbubbles', color: '#8B5CF6', screen: 'AIChat' },
+                { id: 'settings', title: 'Settings', subtitle: 'Configure', icon: 'settings', color: '#6B7280', screen: 'Settings' },
+            ],
+            specialSection: { title: 'My Zone', screen: 'ZoneDashboard', icon: 'map' },
+        },
+    },
 };
 
 const DEFAULT_CONFIG = {
