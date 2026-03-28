@@ -320,19 +320,17 @@ export const UserProvider = ({ children }) => {
 
     const saveLocation = useCallback(async (locationData, id = userId) => {
         if (!id) return { success: false, error: 'No user ID' };
-        setIsLoading(true);
         setError(null);
         try {
             const response = await userService.saveLocation(id, locationData);
-            if (response.success) {
-                return { success: true, location: response.location };
+            if (response?.success) {
+                return { success: true, location: response };
             }
-            return { success: false, error: response.error };
+            return { success: false, error: response?.message || 'Failed to save location' };
         } catch (err) {
-            setError(err.message);
-            return { success: false, error: err.message };
-        } finally {
-            setIsLoading(false);
+            const errorMsg = err?.message || 'Failed to save location';
+            setError(errorMsg);
+            return { success: false, error: errorMsg };
         }
     }, [userId]);
 

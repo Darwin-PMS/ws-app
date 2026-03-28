@@ -25,23 +25,8 @@ const CATEGORY_ICONS = {
     default: 'book-outline',
 };
 
-const CATEGORY_COLORS = {
-    'self-defense': { color: '#EF4444', bg: '#FEF2F2' },
-    'digital-safety': { color: '#3B82F6', bg: '#EFF6FF' },
-    'travel-safety': { color: '#F59E0B', bg: '#FFFBEB' },
-    'workplace-safety': { color: '#8B5CF6', bg: '#F5F3FF' },
-    'emergency-response': { color: '#10B981', bg: '#ECFDF5' },
-    default: { color: '#6366F1', bg: '#EEF2FF' },
-};
-
-const DIFFICULTY_CONFIG = {
-    beginner: { color: '#10B981', bg: '#ECFDF5', label: 'Beginner', icon: 'happy-outline' },
-    intermediate: { color: '#F59E0B', bg: '#FFFBEB', label: 'Intermediate', icon: 'fitness-outline' },
-    advanced: { color: '#EF4444', bg: '#FEF2F2', label: 'Advanced', icon: 'flash-outline' },
-};
-
 const SafetyTutorialScreen = ({ navigation }) => {
-    const { colors, spacing, borderRadius, shadows } = useTheme();
+    const { colors, spacing, borderRadius, shadows, isDark } = useTheme();
     const [tutorials, setTutorials] = useState([]);
     const [categories, setCategories] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState(null);
@@ -51,6 +36,68 @@ const SafetyTutorialScreen = ({ navigation }) => {
     const [showSearch, setShowSearch] = useState(false);
     const [viewMode, setViewMode] = useState('list');
     const searchAnim = useState(new Animated.Value(0))[0];
+
+    const categoryColors = useMemo(() => ({
+        'self-defense': { 
+            color: colors.error, 
+            bg: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEF2F2',
+        },
+        'digital-safety': { 
+            color: colors.info, 
+            bg: isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF',
+        },
+        'travel-safety': { 
+            color: colors.warning, 
+            bg: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FFFBEB',
+        },
+        'workplace-safety': { 
+            color: colors.primary, 
+            bg: isDark ? 'rgba(139, 92, 246, 0.15)' : '#F5F3FF',
+        },
+        'emergency-response': { 
+            color: colors.success, 
+            bg: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5',
+        },
+        default: { 
+            color: colors.primary, 
+            bg: isDark ? 'rgba(139, 92, 246, 0.15)' : '#EEF2FF',
+        },
+    }), [colors, isDark]);
+
+    const difficultyColors = useMemo(() => ({
+        beginner: { 
+            color: colors.success, 
+            bg: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5',
+            label: 'Beginner', 
+            icon: 'happy-outline' 
+        },
+        intermediate: { 
+            color: colors.warning, 
+            bg: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FFFBEB',
+            label: 'Intermediate', 
+            icon: 'fitness-outline' 
+        },
+        advanced: { 
+            color: colors.error, 
+            bg: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEF2F2',
+            label: 'Advanced', 
+            icon: 'flash-outline' 
+        },
+    }), [colors, isDark]);
+
+    const getCategoryConfig = (category) => {
+        const key = category?.toLowerCase().replace(/\s+/g, '-') || 'default';
+        return categoryColors[key] || categoryColors.default;
+    };
+
+    const getCategoryIcon = (category) => {
+        const key = category?.toLowerCase().replace(/\s+/g, '-') || 'default';
+        return CATEGORY_ICONS[key] || CATEGORY_ICONS.default;
+    };
+
+    const getDifficultyConfig = (difficulty) => {
+        return difficultyColors[difficulty?.toLowerCase()] || difficultyColors.beginner;
+    };
 
     const loadData = useCallback(async () => {
         try {
@@ -96,20 +143,6 @@ const SafetyTutorialScreen = ({ navigation }) => {
         );
     }, [tutorials, searchQuery]);
 
-    const getCategoryConfig = (category) => {
-        const key = category?.toLowerCase().replace(/\s+/g, '-') || 'default';
-        return CATEGORY_COLORS[key] || CATEGORY_COLORS.default;
-    };
-
-    const getCategoryIcon = (category) => {
-        const key = category?.toLowerCase().replace(/\s+/g, '-') || 'default';
-        return CATEGORY_ICONS[key] || CATEGORY_ICONS.default;
-    };
-
-    const getDifficultyConfig = (difficulty) => {
-        return DIFFICULTY_CONFIG[difficulty?.toLowerCase()] || DIFFICULTY_CONFIG.beginner;
-    };
-
     const tutorialStats = useMemo(() => ({
         total: tutorials.length,
         categories: new Set(tutorials.map(t => t.category)).size,
@@ -128,7 +161,7 @@ const SafetyTutorialScreen = ({ navigation }) => {
                     styles.categoryChip,
                     {
                         backgroundColor: isSelected ? config.color : config.bg,
-                        borderColor: isSelected ? config.color : 'transparent',
+                        borderColor: isSelected ? config.color : colors.border,
                     }
                 ]}
                 onPress={() => setSelectedCategory(category === selectedCategory ? null : category)}
@@ -188,13 +221,13 @@ const SafetyTutorialScreen = ({ navigation }) => {
                     <View style={styles.listCardFooter}>
                         {item.duration && (
                             <View style={styles.durationContainer}>
-                                <Ionicons name="time-outline" size={14} color={colors.textTertiary} />
-                                <Text style={[styles.durationText, { color: colors.textTertiary }]}>
+                                <Ionicons name="time-outline" size={14} color={colors.textMuted} />
+                                <Text style={[styles.durationText, { color: colors.textMuted }]}>
                                     {item.duration} min
                                 </Text>
                             </View>
                         )}
-                        <View style={[styles.startBtn, { backgroundColor: colors.primary + '15' }]}>
+                        <View style={[styles.startBtn, { backgroundColor: colors.primary + '20' }]}>
                             <Text style={[styles.startBtnText, { color: colors.primary }]}>Start</Text>
                             <Ionicons name="arrow-forward" size={14} color={colors.primary} />
                         </View>
@@ -242,13 +275,13 @@ const SafetyTutorialScreen = ({ navigation }) => {
                     <View style={styles.gridFooter}>
                         {item.duration && (
                             <View style={styles.gridDuration}>
-                                <Ionicons name="time-outline" size={12} color={colors.textTertiary} />
-                                <Text style={[styles.gridDurationText, { color: colors.textTertiary }]}>
+                                <Ionicons name="time-outline" size={12} color={colors.textMuted} />
+                                <Text style={[styles.gridDurationText, { color: colors.textMuted }]}>
                                     {item.duration} min
                                 </Text>
                             </View>
                         )}
-                        <View style={[styles.gridStartBtn, { backgroundColor: colors.primary + '15' }]}>
+                        <View style={[styles.gridStartBtn, { backgroundColor: colors.primary + '20' }]}>
                             <Ionicons name="play" size={12} color={colors.primary} />
                         </View>
                     </View>
@@ -279,7 +312,7 @@ const SafetyTutorialScreen = ({ navigation }) => {
                 </View>
             </View>
 
-            <View style={[styles.infoBanner, { backgroundColor: colors.info + '10' }]}>
+            <View style={[styles.infoBanner, { backgroundColor: colors.info + '15' }]}>
                 <Ionicons name="bulb-outline" size={18} color={colors.info} />
                 <Text style={[styles.infoBannerText, { color: colors.text }]}>
                     Learn essential safety skills to protect yourself
@@ -336,7 +369,7 @@ const SafetyTutorialScreen = ({ navigation }) => {
             </View>
 
             <View style={styles.content}>
-                <View style={styles.categoryScrollContainer}>
+                <View style={[styles.categoryScrollContainer, { borderBottomColor: colors.borderLight }]}>
                     <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
@@ -400,7 +433,7 @@ const styles = StyleSheet.create({
     searchBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, gap: 10 },
     searchInput: { flex: 1, fontSize: 16, color: '#fff' },
     content: { flex: 1 },
-    categoryScrollContainer: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
+    categoryScrollContainer: { paddingVertical: 12, borderBottomWidth: 1 },
     categoryScroll: { paddingHorizontal: 16, gap: 8 },
     categoryChip: {
         flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8,

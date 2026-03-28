@@ -16,8 +16,6 @@ const FamilyLocationScreen = ({ navigation, route }) => {
     const [lastUpdated, setLastUpdated] = useState(null);
     const [currentFamilyId, setCurrentFamilyId] = useState(passedFamilyId);
     const [families, setFamilies] = useState([]);
-    const [showFamilySelector, setShowFamilySelector] = useState(false);
-    const [error, setError] = useState(null);
     
     const refreshIntervalRef = useRef(null);
     const mapRef = useRef(null);
@@ -235,7 +233,7 @@ const FamilyLocationScreen = ({ navigation, route }) => {
         return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
     };
 
-    const currentFamily = families.find(f => f.id === currentFamilyId);
+    const currentFamily = Array.isArray(families) ? families.find(f => f.id === currentFamilyId) : null;
 
     if (isLoading) {
         return (

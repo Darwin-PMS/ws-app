@@ -26,18 +26,8 @@ const CATEGORY_ICONS = {
     default: 'document-text-outline',
 };
 
-const CATEGORY_COLORS = {
-    criminal: { color: '#EF4444', bg: '#FEF2F2' },
-    workplace: { color: '#3B82F6', bg: '#EFF6FF' },
-    road: { color: '#F59E0B', bg: '#FFFBEB' },
-    domestic: { color: '#8B5CF6', bg: '#F5F3FF' },
-    digital: { color: '#10B981', bg: '#ECFDF5' },
-    harassment: { color: '#EC4899', bg: '#FDF2F8' },
-    default: { color: '#6366F1', bg: '#EEF2FF' },
-};
-
 const SafetyLawScreen = ({ navigation }) => {
-    const { colors, spacing, borderRadius, shadows } = useTheme();
+    const { colors, spacing, borderRadius, shadows, isDark } = useTheme();
     const [laws, setLaws] = useState([]);
     const [categories, setCategories] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState(null);
@@ -48,6 +38,82 @@ const SafetyLawScreen = ({ navigation }) => {
     const [viewMode, setViewMode] = useState('list');
     const [expandedLaw, setExpandedLaw] = useState(null);
     const searchAnim = useState(new Animated.Value(0))[0];
+
+    const categoryColors = useMemo(() => ({
+        criminal: { 
+            color: colors.error, 
+            bg: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEF2F2',
+            darkBg: '#FEF2F2',
+        },
+        workplace: { 
+            color: colors.info, 
+            bg: isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF',
+            darkBg: '#EFF6FF',
+        },
+        road: { 
+            color: colors.warning, 
+            bg: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FFFBEB',
+            darkBg: '#FFFBEB',
+        },
+        domestic: { 
+            color: colors.primary, 
+            bg: isDark ? 'rgba(139, 92, 246, 0.15)' : '#F5F3FF',
+            darkBg: '#F5F3FF',
+        },
+        digital: { 
+            color: colors.success, 
+            bg: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5',
+            darkBg: '#ECFDF5',
+        },
+        harassment: { 
+            color: colors.secondary, 
+            bg: isDark ? 'rgba(236, 72, 153, 0.15)' : '#FDF2F8',
+            darkBg: '#FDF2F8',
+        },
+        default: { 
+            color: colors.primary, 
+            bg: isDark ? 'rgba(139, 92, 246, 0.15)' : '#EEF2FF',
+            darkBg: '#EEF2FF',
+        },
+    }), [colors, isDark]);
+
+    const getCategoryConfig = (category) => {
+        const key = category?.toLowerCase().replace(/\s+/g, '') || 'default';
+        return categoryColors[key] || categoryColors.default;
+    };
+
+    const getCategoryIcon = (category) => {
+        const key = category?.toLowerCase().replace(/\s+/g, '') || 'default';
+        return CATEGORY_ICONS[key] || CATEGORY_ICONS.default;
+    };
+
+    const getPenaltyConfig = (penalty) => {
+        if (!penalty) return { color: colors.textSecondary, bg: colors.surface, icon: 'help-circle-outline', label: 'N/A' };
+        const lower = penalty.toLowerCase();
+        if (lower.includes('death') || lower.includes('life')) {
+            return { 
+                color: colors.error, 
+                bg: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2',
+                icon: 'alert-circle-outline', 
+                label: 'Severe' 
+            };
+        } else if (lower.includes('imprisonment') || lower.includes('jail')) {
+            return { 
+                color: colors.warning, 
+                bg: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FFEDD5',
+                icon: 'lock-closed-outline', 
+                label: 'Prison' 
+            };
+        } else if (lower.includes('fine')) {
+            return { 
+                color: colors.warning, 
+                bg: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FEF9C3',
+                icon: 'cash-outline', 
+                label: 'Fine' 
+            };
+        }
+        return { color: colors.textSecondary, bg: colors.surface, icon: 'document-outline', label: 'Other' };
+    };
 
     const loadData = useCallback(async () => {
         try {
@@ -108,29 +174,6 @@ const SafetyLawScreen = ({ navigation }) => {
         return groups;
     }, [filteredLaws, viewMode]);
 
-    const getCategoryConfig = (category) => {
-        const key = category?.toLowerCase().replace(/\s+/g, '') || 'default';
-        return CATEGORY_COLORS[key] || CATEGORY_COLORS.default;
-    };
-
-    const getCategoryIcon = (category) => {
-        const key = category?.toLowerCase().replace(/\s+/g, '') || 'default';
-        return CATEGORY_ICONS[key] || CATEGORY_ICONS.default;
-    };
-
-    const getPenaltyConfig = (penalty) => {
-        if (!penalty) return { color: colors.textSecondary, bg: colors.surface, icon: 'help-circle-outline', label: 'N/A' };
-        const lower = penalty.toLowerCase();
-        if (lower.includes('death') || lower.includes('life')) {
-            return { color: '#DC2626', bg: '#FEE2E2', icon: 'alert-circle-outline', label: 'Severe' };
-        } else if (lower.includes('imprisonment') || lower.includes('jail')) {
-            return { color: '#EA580C', bg: '#FFEDD5', icon: 'lock-closed-outline', label: 'Prison' };
-        } else if (lower.includes('fine')) {
-            return { color: '#CA8A04', bg: '#FEF9C3', icon: 'cash-outline', label: 'Fine' };
-        }
-        return { color: colors.textSecondary, bg: colors.surface, icon: 'document-outline', label: 'Other' };
-    };
-
     const formatDate = (dateString) => {
         if (!dateString) return '';
         const date = new Date(dateString);
@@ -139,7 +182,6 @@ const SafetyLawScreen = ({ navigation }) => {
 
     const renderCategoryChip = (category, isSelected) => {
         const config = getCategoryConfig(category);
-        const icon = getCategoryIcon(category);
         const label = category === null ? 'All' : category;
         
         return (
@@ -149,7 +191,7 @@ const SafetyLawScreen = ({ navigation }) => {
                     styles.categoryChip,
                     {
                         backgroundColor: isSelected ? config.color : config.bg,
-                        borderColor: isSelected ? config.color : 'transparent',
+                        borderColor: isSelected ? config.color : colors.border,
                     }
                 ]}
                 onPress={() => setSelectedCategory(category === selectedCategory ? null : category)}
@@ -213,16 +255,16 @@ const SafetyLawScreen = ({ navigation }) => {
                 <View style={styles.listCardFooter}>
                     {item.effectiveDate && (
                         <View style={styles.dateInfo}>
-                            <Ionicons name="calendar-outline" size={12} color={colors.textTertiary} />
-                            <Text style={[styles.dateText, { color: colors.textTertiary }]}>
+                            <Ionicons name="calendar-outline" size={12} color={colors.textMuted} />
+                            <Text style={[styles.dateText, { color: colors.textMuted }]}>
                                 {formatDate(item.effectiveDate)}
                             </Text>
                         </View>
                     )}
                     {item.jurisdiction && (
                         <View style={styles.jurisdictionInfo}>
-                            <Ionicons name="location-outline" size={12} color={colors.textTertiary} />
-                            <Text style={[styles.dateText, { color: colors.textTertiary }]}>
+                            <Ionicons name="location-outline" size={12} color={colors.textMuted} />
+                            <Text style={[styles.dateText, { color: colors.textMuted }]}>
                                 {item.jurisdiction}
                             </Text>
                         </View>
@@ -298,7 +340,7 @@ const SafetyLawScreen = ({ navigation }) => {
                     {title}
                 </Text>
             </View>
-            <Text style={[styles.sectionCount, { color: colors.textTertiary }]}>
+            <Text style={[styles.sectionCount, { color: colors.textMuted }]}>
                 {groupedLaws[title]?.length || 0} laws
             </Text>
         </View>
@@ -432,7 +474,7 @@ const SafetyLawScreen = ({ navigation }) => {
             </View>
 
             <View style={styles.content}>
-                <View style={styles.categoryScrollContainer}>
+                <View style={[styles.categoryScrollContainer, { borderBottomColor: colors.borderLight }]}>
                     <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
@@ -461,7 +503,7 @@ const styles = StyleSheet.create({
     searchBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, gap: 10 },
     searchInput: { flex: 1, fontSize: 16, color: '#fff' },
     content: { flex: 1 },
-    categoryScrollContainer: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
+    categoryScrollContainer: { paddingVertical: 12, borderBottomWidth: 1 },
     categoryScroll: { paddingHorizontal: 16, gap: 8 },
     categoryChip: {
         flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8,

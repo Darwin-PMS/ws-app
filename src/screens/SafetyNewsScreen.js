@@ -17,16 +17,8 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
 import safetyNewsService from '../services/safetyNewsService';
 
-const CATEGORY_COLORS = {
-    'safety-tips': { color: '#10B981', bg: '#ECFDF5' },
-    'legal-rights': { color: '#3B82F6', bg: '#EFF6FF' },
-    'emergency': { color: '#EF4444', bg: '#FEF2F2' },
-    'awareness': { color: '#8B5CF6', bg: '#F5F3FF' },
-    default: { color: '#6366F1', bg: '#EEF2FF' },
-};
-
 const SafetyNewsScreen = ({ navigation }) => {
-    const { colors, spacing, borderRadius, shadows } = useTheme();
+    const { colors, spacing, borderRadius, shadows, isDark } = useTheme();
     const [news, setNews] = useState([]);
     const [featuredNews, setFeaturedNews] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -37,6 +29,34 @@ const SafetyNewsScreen = ({ navigation }) => {
     const [showSearch, setShowSearch] = useState(false);
     const [viewMode, setViewMode] = useState('list');
     const searchAnim = useState(new Animated.Value(0))[0];
+
+    const categoryColors = useMemo(() => ({
+        'safety-tips': { 
+            color: colors.success, 
+            bg: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5',
+        },
+        'legal-rights': { 
+            color: colors.info, 
+            bg: isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF',
+        },
+        'emergency': { 
+            color: colors.error, 
+            bg: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEF2F2',
+        },
+        'awareness': { 
+            color: colors.primary, 
+            bg: isDark ? 'rgba(139, 92, 246, 0.15)' : '#F5F3FF',
+        },
+        default: { 
+            color: colors.primary, 
+            bg: isDark ? 'rgba(139, 92, 246, 0.15)' : '#EEF2FF',
+        },
+    }), [colors, isDark]);
+
+    const getCategoryConfig = (category) => {
+        const key = category?.toLowerCase().replace(/\s+/g, '-') || 'default';
+        return categoryColors[key] || categoryColors.default;
+    };
 
     const loadData = useCallback(async () => {
         try {
@@ -84,11 +104,6 @@ const SafetyNewsScreen = ({ navigation }) => {
         );
     }, [news, searchQuery]);
 
-    const getCategoryConfig = (category) => {
-        const key = category?.toLowerCase().replace(/\s+/g, '-') || 'default';
-        return CATEGORY_COLORS[key] || CATEGORY_COLORS.default;
-    };
-
     const formatDate = (dateString) => {
         if (!dateString) return '';
         const date = new Date(dateString);
@@ -117,7 +132,7 @@ const SafetyNewsScreen = ({ navigation }) => {
                     styles.categoryChip,
                     {
                         backgroundColor: isSelected ? config.color : config.bg,
-                        borderColor: isSelected ? config.color : 'transparent',
+                        borderColor: isSelected ? config.color : colors.border,
                     }
                 ]}
                 onPress={() => setSelectedCategory(category === selectedCategory ? null : category)}
@@ -175,18 +190,18 @@ const SafetyNewsScreen = ({ navigation }) => {
                     <View style={styles.listFooter}>
                         <View style={styles.newsMeta}>
                             {item.author && (
-                                <Text style={[styles.authorText, { color: colors.textTertiary }]} numberOfLines={1}>
+                                <Text style={[styles.authorText, { color: colors.textMuted }]} numberOfLines={1}>
                                     {item.author}
                                 </Text>
                             )}
-                            <Text style={[styles.dateText, { color: colors.textTertiary }]}>
+                            <Text style={[styles.dateText, { color: colors.textMuted }]}>
                                 {formatDate(item.publishedAt)}
                             </Text>
                         </View>
                         {item.viewsCount > 0 && (
                             <View style={styles.viewsContainer}>
-                                <Ionicons name="eye-outline" size={12} color={colors.textTertiary} />
-                                <Text style={[styles.viewsText, { color: colors.textTertiary }]}>{item.viewsCount}</Text>
+                                <Ionicons name="eye-outline" size={12} color={colors.textMuted} />
+                                <Text style={[styles.viewsText, { color: colors.textMuted }]}>{item.viewsCount}</Text>
                             </View>
                         )}
                     </View>
@@ -230,13 +245,13 @@ const SafetyNewsScreen = ({ navigation }) => {
                     )}
 
                     <View style={styles.gridFooter}>
-                        <Text style={[styles.gridDate, { color: colors.textTertiary }]}>
+                        <Text style={[styles.gridDate, { color: colors.textMuted }]}>
                             {getTimeAgo(item.publishedAt)}
                         </Text>
                         {item.viewsCount > 0 && (
                             <View style={styles.gridViews}>
-                                <Ionicons name="eye-outline" size={12} color={colors.textTertiary} />
-                                <Text style={[styles.viewsText, { color: colors.textTertiary }]}>{item.viewsCount}</Text>
+                                <Ionicons name="eye-outline" size={12} color={colors.textMuted} />
+                                <Text style={[styles.viewsText, { color: colors.textMuted }]}>{item.viewsCount}</Text>
                             </View>
                         )}
                     </View>
@@ -270,21 +285,21 @@ const SafetyNewsScreen = ({ navigation }) => {
                                 onPress={() => navigation.navigate('SafetyNewsDetail', { newsId: item.id })}
                                 activeOpacity={0.85}
                             >
-                {item.imageUrl ? (
-                    <Image source={{ uri: item.imageUrl }} style={styles.featuredImage} />
-                ) : (
-                    <View style={[styles.featuredImagePlaceholder, { backgroundColor: config.bg }]}>
-                        <Ionicons name="newspaper-outline" size={40} color={config.color} />
-                    </View>
-                )}
+                                {item.imageUrl ? (
+                                    <Image source={{ uri: item.imageUrl }} style={styles.featuredImage} />
+                                ) : (
+                                    <View style={[styles.featuredImagePlaceholder, { backgroundColor: config.bg }]}>
+                                        <Ionicons name="newspaper-outline" size={40} color={config.color} />
+                                    </View>
+                                )}
                                 <View style={styles.featuredOverlay}>
                                     <View style={[styles.featuredCategory, { backgroundColor: config.color }]}>
                                         <Text style={styles.featuredCategoryText}>{item.category}</Text>
                                     </View>
                                 </View>
                                 <View style={styles.featuredContent}>
-                                    <Text style={styles.featuredTitle} numberOfLines={2}>{item.title}</Text>
-                                    <Text style={styles.featuredMeta}>
+                                    <Text style={[styles.featuredTitle, { color: isDark ? '#fff' : '#333' }]} numberOfLines={2}>{item.title}</Text>
+                                    <Text style={[styles.featuredMeta, { color: isDark ? '#A1A1AA' : '#666' }]}>
                                         {item.author && `By ${item.author} • `}{getTimeAgo(item.publishedAt)}
                                     </Text>
                                 </View>
@@ -344,7 +359,7 @@ const SafetyNewsScreen = ({ navigation }) => {
             </View>
 
             <View style={styles.content}>
-                <View style={styles.categoryScrollContainer}>
+                <View style={[styles.categoryScrollContainer, { borderBottomColor: colors.borderLight }]}>
                     <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
@@ -408,7 +423,7 @@ const styles = StyleSheet.create({
     searchBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, gap: 10 },
     searchInput: { flex: 1, fontSize: 16, color: '#fff' },
     content: { flex: 1 },
-    categoryScrollContainer: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
+    categoryScrollContainer: { paddingVertical: 12, borderBottomWidth: 1 },
     categoryScroll: { paddingHorizontal: 16, gap: 8 },
     categoryChip: {
         paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, gap: 6,
@@ -426,8 +441,8 @@ const styles = StyleSheet.create({
     featuredCategory: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
     featuredCategoryText: { color: '#fff', fontSize: 10, fontWeight: '600', textTransform: 'capitalize' },
     featuredContent: { padding: 12 },
-    featuredTitle: { fontSize: 14, fontWeight: '700', color: '#333', lineHeight: 20, marginBottom: 4 },
-    featuredMeta: { fontSize: 11, color: '#666' },
+    featuredTitle: { fontSize: 14, fontWeight: '700', lineHeight: 20, marginBottom: 4 },
+    featuredMeta: { fontSize: 11 },
     listContainer: { padding: 16, paddingBottom: 100 },
     listCard: { flexDirection: 'row', marginBottom: 12, overflow: 'hidden' },
     listImage: { width: 100, height: 120 },
